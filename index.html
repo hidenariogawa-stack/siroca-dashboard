@@ -726,39 +726,47 @@
     <div id="ga4LpTable"><div style="color:#555;font-size:12px;text-align:center;padding:20px">データ読み込み中...</div></div>
   </div>
 
-  <!-- ブランドサイト→本店遷移率 -->
-  <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px;margin-bottom:20px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div style="font-size:13px;font-weight:600;color:#fff">🏪 ブランドサイト → 本店 遷移分析</div>
-      <div style="font-size:11px;color:#555">「オンラインストアへ遷移」イベント基準</div>
+  <!-- デバイス別 + 時間帯別 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+
+    <!-- デバイス別 -->
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:14px">📱 デバイス別パフォーマンス</div>
+      <div id="ga4Devices"><div style="color:#555;font-size:12px;text-align:center;padding:20px">データ読み込み中...</div></div>
     </div>
 
-    <!-- KPIカード -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
-      <div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center">
-        <div style="font-size:11px;color:#666;margin-bottom:6px">セッション数</div>
-        <div id="transitionSessions" style="font-size:22px;font-weight:700;color:#fff">-</div>
+    <!-- 時間帯別 -->
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:14px">🕐 時間帯別セッション数</div>
+      <canvas id="ga4HourlyChart" height="140"></canvas>
+    </div>
+  </div>
+
+  <!-- 新規vs既存 + サイト内検索 -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+
+    <!-- 新規vs既存 -->
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:14px">👥 新規 vs 既存ユーザー</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <canvas id="ga4UserTypeChart" width="140" height="140" style="flex-shrink:0"></canvas>
+        <div id="ga4UserTypeDetail" style="flex:1"></div>
       </div>
-      <div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center">
-        <div style="font-size:11px;color:#666;margin-bottom:6px">本店へ遷移したユーザー数</div>
-        <div id="transitionCount" style="font-size:22px;font-weight:700;color:#0082fb">-</div>
-      </div>
-      <div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center">
-        <div style="font-size:11px;color:#666;margin-bottom:6px">遷移率</div>
-        <div id="transitionRate" style="font-size:22px;font-weight:700;color:#22c55e">-</div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #1e2130">
+        <div style="font-size:11px;color:#666;margin-bottom:6px">スクロール率（90%以上）</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;background:#0f1117;border-radius:4px;height:8px">
+            <div id="ga4ScrollBar" style="background:#0082fb;height:8px;border-radius:4px;width:0%;transition:width .5s"></div>
+          </div>
+          <div id="ga4ScrollRate" style="font-size:14px;font-weight:700;color:#0082fb;white-space:nowrap">-</div>
+        </div>
       </div>
     </div>
 
-    <!-- 遷移率推移グラフ -->
-    <div style="margin-bottom:20px">
-      <div style="font-size:12px;color:#888;margin-bottom:10px">遷移率推移</div>
-      <canvas id="transitionChart" height="60"></canvas>
-    </div>
-
-    <!-- LP別遷移数 -->
-    <div>
-      <div style="font-size:12px;color:#888;margin-bottom:10px">ページ別 遷移数</div>
-      <div id="transitionLpTable"><div style="color:#555;font-size:12px;text-align:center;padding:20px">データ読み込み中...</div></div>
+    <!-- サイト内検索 -->
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:14px">🔍 サイト内検索キーワード TOP20</div>
+      <div id="ga4SearchTerms"><div style="color:#555;font-size:12px;text-align:center;padding:20px">データ読み込み中...</div></div>
     </div>
   </div>
 
@@ -2792,7 +2800,7 @@ let ga4SelectedLp = '';
 async function initGa4() {
   if (ga4Initialized) return;
   ga4Initialized = true;
-  await Promise.all([loadGa4Overview(), loadGa4Funnel(), loadGa4Events(), loadGa4Sources(), loadGa4LandingPages(), loadGa4Transition()]);
+  await Promise.all([loadGa4Overview(), loadGa4Funnel(), loadGa4Events(), loadGa4Sources(), loadGa4LandingPages(), loadGa4Devices(), loadGa4Hourly(), loadGa4Behavior()]);
 }
 
 function onGa4DatePresetChange() {
@@ -3015,75 +3023,170 @@ async function loadGa4Sources() {
   } catch(e) { document.getElementById('ga4Sources').innerHTML = '<div style="color:#f87171;font-size:12px">取得エラー</div>'; }
 }
 
-// 遷移率
-let transitionChartInstance = null;
-async function loadGa4Transition() {
+// デバイス別分析
+let ga4HourlyChartInstance = null;
+let ga4UserTypeChartInstance = null;
+
+async function loadGa4Devices() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=transition' + getGa4Filters());
+    const res = await fetch('/.netlify/functions/ga4-data?type=devices' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    const rows = data.rows || [];
+    const cvMap = data.cvMap || {};
+    const deviceIcon = { desktop: '🖥️', mobile: '📱', tablet: '📟' };
+    const deviceLabel = { desktop: 'PC', mobile: 'スマホ', tablet: 'タブレット' };
+    let html = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr>
+        <th style="text-align:left;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">デバイス</th>
+        <th style="text-align:right;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">セッション</th>
+        <th style="text-align:right;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">カート追加</th>
+        <th style="text-align:right;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">カート率</th>
+        <th style="text-align:right;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">直販CV</th>
+        <th style="text-align:right;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">CV率</th>
+      </tr></thead><tbody>`;
+    rows.forEach(row => {
+      const device = row.dimensionValues[0].value;
+      const sessions = parseInt(row.metricValues[0].value) || 0;
+      const carts = parseInt(row.metricValues[1].value) || 0;
+      const cv = cvMap[device] || 0;
+      const cartRate = sessions ? (carts / sessions * 100).toFixed(1) : 0;
+      const cvRate = sessions ? (cv / sessions * 100).toFixed(1) : 0;
+      html += `<tr style="border-bottom:1px solid #1a1f2e">
+        <td style="padding:10px;color:#fff;font-weight:500">${deviceIcon[device] || '💻'} ${deviceLabel[device] || device}</td>
+        <td style="padding:10px;text-align:right;color:#ccc">${sessions.toLocaleString()}</td>
+        <td style="padding:10px;text-align:right;color:#e37400">${carts.toLocaleString()}</td>
+        <td style="padding:10px;text-align:right;color:#e37400;font-weight:600">${cartRate}%</td>
+        <td style="padding:10px;text-align:right;color:#22c55e">${cv.toLocaleString()}</td>
+        <td style="padding:10px;text-align:right;color:#22c55e;font-weight:600">${cvRate}%</td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('ga4Devices').innerHTML = rows.length ? html : '<div style="color:#555;font-size:12px;text-align:center;padding:20px">データなし</div>';
+  } catch(e) { document.getElementById('ga4Devices').innerHTML = '<div style="color:#f87171;font-size:12px">取得エラー</div>'; }
+}
 
-    document.getElementById('transitionSessions').textContent = (data.totalSessions || 0).toLocaleString();
-    document.getElementById('transitionCount').textContent = (data.totalTransitions || 0).toLocaleString();
-    document.getElementById('transitionRate').textContent = (data.transitionRate || 0) + '%';
-
-    // 遷移率推移グラフ
-    const daily = data.daily || [];
-    const labels = daily.map(d => d.date.slice(4,6) + '/' + d.date.slice(6,8));
-    const rates = daily.map(d => d.sessions ? (d.transitions / d.sessions * 100).toFixed(1) : 0);
-    const ctx = document.getElementById('transitionChart').getContext('2d');
-    if (transitionChartInstance) transitionChartInstance.destroy();
-    transitionChartInstance = new Chart(ctx, {
-      type: 'line',
+// 時間帯別
+async function loadGa4Hourly() {
+  try {
+    const res = await fetch('/.netlify/functions/ga4-data?type=hourly' + getGa4Filters());
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const rows = data.rows || [];
+    const hours = Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0'));
+    const sessionMap = {};
+    rows.forEach(r => { sessionMap[r.dimensionValues[0].value] = parseInt(r.metricValues[0].value) || 0; });
+    const sessions = hours.map(h => sessionMap[h] || 0);
+    const maxVal = Math.max(...sessions);
+    const ctx = document.getElementById('ga4HourlyChart').getContext('2d');
+    if (ga4HourlyChartInstance) ga4HourlyChartInstance.destroy();
+    ga4HourlyChartInstance = new Chart(ctx, {
+      type: 'bar',
       data: {
-        labels,
+        labels: hours.map(h => h + '時'),
         datasets: [{
-          label: '遷移率(%)',
-          data: rates,
-          borderColor: '#0082fb',
-          backgroundColor: 'rgba(0,130,251,0.1)',
-          borderWidth: 2,
-          pointRadius: 2,
-          fill: true,
-          tension: 0.3
+          data: sessions,
+          backgroundColor: sessions.map(v => v === maxVal ? 'rgba(227,116,0,0.9)' : 'rgba(0,130,251,0.5)'),
+          borderRadius: 3,
         }]
       },
       options: {
         responsive: true,
-        plugins: { legend: { labels: { color: '#888' } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' セッション' } } },
         scales: {
-          x: { ticks: { color: '#666', maxTicksLimit: 10 }, grid: { color: '#1e2130' } },
-          y: { ticks: { color: '#666', callback: v => v + '%' }, grid: { color: '#1e2130' } }
+          x: { ticks: { color: '#666', font: { size: 9 }, maxRotation: 0 }, grid: { display: false } },
+          y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1e2130' } }
         }
       }
     });
+  } catch(e) { console.error('hourly', e); }
+}
 
-    // LP別遷移数テーブル
-    const rows = data.lpBreakdown || [];
-    if (rows.length === 0) {
-      document.getElementById('transitionLpTable').innerHTML = '<div style="color:#555;font-size:12px;text-align:center;padding:10px">データなし</div>';
+// 新規vs既存・検索・スクロール
+async function loadGa4Behavior() {
+  try {
+    const res = await fetch('/.netlify/functions/ga4-data?type=behavior' + getGa4Filters());
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // 新規vs既存ドーナツ
+    const userTypeRows = data.userType || [];
+    let newUsers = 0, returnUsers = 0;
+    userTypeRows.forEach(r => {
+      const type = r.dimensionValues[0].value;
+      const sessions = parseInt(r.metricValues[0].value) || 0;
+      if (type === 'new') newUsers += sessions;
+      else returnUsers += sessions;
+    });
+    const total = newUsers + returnUsers;
+    const newPct = total ? (newUsers / total * 100).toFixed(1) : 0;
+    const returnPct = total ? (returnUsers / total * 100).toFixed(1) : 0;
+
+    const ctx2 = document.getElementById('ga4UserTypeChart').getContext('2d');
+    if (ga4UserTypeChartInstance) ga4UserTypeChartInstance.destroy();
+    ga4UserTypeChartInstance = new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: ['新規', 'リピーター'],
+        datasets: [{ data: [newUsers, returnUsers], backgroundColor: ['rgba(0,130,251,0.8)', 'rgba(34,197,94,0.8)'], borderWidth: 0 }]
+      },
+      options: {
+        responsive: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed.toLocaleString() } } }
+      }
+    });
+
+    document.getElementById('ga4UserTypeDetail').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <div style="width:10px;height:10px;border-radius:50%;background:#0082fb"></div>
+            <span style="font-size:12px;color:#aaa">新規ユーザー</span>
+          </div>
+          <div style="font-size:20px;font-weight:700;color:#fff">${newUsers.toLocaleString()}</div>
+          <div style="font-size:11px;color:#0082fb">${newPct}%</div>
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <div style="width:10px;height:10px;border-radius:50%;background:#22c55e"></div>
+            <span style="font-size:12px;color:#aaa">リピーター</span>
+          </div>
+          <div style="font-size:20px;font-weight:700;color:#fff">${returnUsers.toLocaleString()}</div>
+          <div style="font-size:11px;color:#22c55e">${returnPct}%</div>
+        </div>
+      </div>`;
+
+    // スクロール率
+    const scrollRate = data.scrollRate || 0;
+    document.getElementById('ga4ScrollRate').textContent = scrollRate + '%';
+    document.getElementById('ga4ScrollBar').style.width = Math.min(scrollRate, 100) + '%';
+
+    // 検索キーワード
+    const searchRows = data.searchTerms || [];
+    if (searchRows.length === 0) {
+      document.getElementById('ga4SearchTerms').innerHTML = '<div style="color:#555;font-size:12px;text-align:center;padding:20px">検索データなし</div>';
       return;
     }
-    let html = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-      <thead><tr>
-        <th style="text-align:left;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">ページ</th>
-        <th style="text-align:right;padding:8px 10px;color:#666;font-weight:500;border-bottom:1px solid #1e2130">遷移数</th>
-      </tr></thead><tbody>`;
-    rows.slice(0, 15).forEach(row => {
-      const page = row.dimensionValues[0].value;
+    const maxCount = Math.max(...searchRows.map(r => parseInt(r.metricValues[0].value) || 0));
+    let html = '<div style="display:flex;flex-direction:column;gap:6px">';
+    searchRows.slice(0, 20).forEach(row => {
+      const term = row.dimensionValues[0].value || '(not set)';
       const count = parseInt(row.metricValues[0].value) || 0;
-      html += `<tr style="border-bottom:1px solid #1a1f2e" onmouseover="this.style.background='#1a1f2e'" onmouseout="this.style.background=''">
-        <td style="padding:9px 10px;color:#ccc;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${page}">${page}</td>
-        <td style="padding:9px 10px;text-align:right;color:#0082fb;font-weight:600">${count.toLocaleString()}</td>
-      </tr>`;
+      const pct = maxCount ? (count / maxCount * 100) : 0;
+      html += `<div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span style="font-size:12px;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${term}</span>
+          <span style="font-size:12px;color:#888;white-space:nowrap;margin-left:8px">${count.toLocaleString()}</span>
+        </div>
+        <div style="background:#0f1117;border-radius:3px;height:4px">
+          <div style="background:#0082fb;height:4px;border-radius:3px;width:${pct}%"></div>
+        </div>
+      </div>`;
     });
-    html += '</tbody></table></div>';
-    document.getElementById('transitionLpTable').innerHTML = html;
+    html += '</div>';
+    document.getElementById('ga4SearchTerms').innerHTML = html;
   } catch(e) {
-    document.getElementById('transitionSessions').textContent = '-';
-    document.getElementById('transitionCount').textContent = '-';
-    document.getElementById('transitionRate').textContent = '-';
-    document.getElementById('transitionLpTable').innerHTML = '<div style="color:#f87171;font-size:12px">取得エラー: ' + e.message + '</div>';
+    document.getElementById('ga4SearchTerms').innerHTML = '<div style="color:#f87171;font-size:12px">取得エラー: ' + e.message + '</div>';
   }
 }
 
