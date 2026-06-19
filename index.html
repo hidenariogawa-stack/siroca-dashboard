@@ -9,6 +9,24 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #0f1117; color: #e8e8e8; min-height: 100vh; }
 
+  .platform-tab { padding: 7px 16px; border-radius: 20px; border: 1.5px solid #2a2f40; background: transparent; color: #888; font-size: 12px; font-weight: 500; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .platform-tab:hover { border-color: #555; color: #ccc; }
+  .platform-tab.active { border-color: #0082fb; background: #0d1e3a; color: #0082fb; }
+
+  /* Rakuten Section */
+  .rakuten-section { display: none; }
+  .rakuten-upload-box { margin: 24px 28px; background: #161b27; border: 1px solid #1e2130; border-radius: 12px; padding: 24px; }
+  .upload-drop-zone { border: 2px dashed #2a2f40; border-radius: 10px; padding: 32px; text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 16px; }
+  .upload-drop-zone:hover, .upload-drop-zone.dragover { border-color: #f4452a; background: rgba(244,69,42,.05); }
+  .upload-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-text { font-size: 14px; color: #aaa; margin-bottom: 4px; }
+  .upload-sub { font-size: 12px; color: #555; }
+  .upload-steps { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .upload-step { background: #0f1117; border: 1px solid #2a2f40; border-radius: 8px; padding: 8px 12px; font-size: 11px; color: #888; flex: 1; min-width: 150px; }
+  .upload-step strong { color: #ccc; display: block; margin-bottom: 2px; }
+  .rkt-guide-btn { background: #f4452a; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; }
+  .rkt-guide-btn:hover { opacity: .85; }
+
   .header { padding: 20px 28px; border-bottom: 1px solid #1e2130; display: flex; align-items: center; justify-content: space-between; }
   .header-left { display: flex; align-items: center; gap: 12px; }
   .meta-logo { width: 32px; height: 32px; background: linear-gradient(135deg, #0082fb, #0052d4); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 14px; }
@@ -159,15 +177,21 @@
 
 <div class="header">
   <div class="header-left">
-    <div class="meta-logo">M</div>
+    <div class="meta-logo" id="platformLogo">M</div>
     <div>
-      <h1>Meta広告 日次実績ダッシュボード</h1>
+      <h1 id="platformTitle">Meta広告 日次実績ダッシュボード</h1>
       <div class="header-sub">Campaign Performance Analytics</div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;gap:6px">
+      <button class="platform-tab active" id="tab-meta" onclick="switchPlatform('meta')">📘 Meta広告</button>
+      <button class="platform-tab" id="tab-rakuten" onclick="switchPlatform('rakuten')">🛒 楽天RPP</button>
+      <button class="platform-tab" id="tab-clarity" onclick="switchPlatform('clarity')">🔍 Clarity</button>
+      <button class="platform-tab" id="tab-ga4" onclick="switchPlatform('ga4')">📈 GA4</button>
+    </div>
     <span class="status-badge disconnected" id="statusBadge">未接続</span>
-    <button id="clearTokenBtn" onclick="clearSavedToken()" style="display:none;background:none;border:1px solid #2a2f40;color:#666;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer" title="保存済みトークンを削除して再接続">🔑 トークンを変更</button>
+    <button id="clearTokenBtn" onclick="clearSavedToken()" style="display:none;background:none;border:1px solid #2a2f40;color:#666;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer">🔑 トークンを変更</button>
   </div>
 </div>
 
@@ -288,7 +312,7 @@
     <div class="chart-canvas-wrap"><canvas id="dailyPurchasesChart"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title">クリック数 推移（日別）</div>
+    <div class="chart-title">クリック数 TOP15（商品別）</div>
     <div class="chart-canvas-wrap"><canvas id="dailyClicksChart"></canvas></div>
   </div>
 </div>
@@ -354,6 +378,231 @@
   </div>
 </div>
 
+<!-- Clarity Section -->
+<div id="claritySection" style="display:none">
+
+  <!-- Setup -->
+  <div class="setup-panel" id="claritySetupPanel">
+    <div class="setup-title">🔍 Microsoft Clarity APIトークンを入力してください</div>
+    <div class="setup-desc">Clarity設定 → データのエクスポート → APIトークンを入力してください。<br>プロジェクトIDも合わせて入力が必要です。</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <input type="password" class="token-input" id="clarityTokenInput" placeholder="eyJhbGci..." style="flex:2" />
+      <input type="text" class="token-input" id="clarityProjectInput" placeholder="プロジェクトID（例：o1h3s1yb0k）" style="flex:1;font-family:monospace" />
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="connectClarity()">接続する</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#888;cursor:pointer">
+        <input type="checkbox" id="saveClarityCheck" style="accent-color:#00a4ef" checked />
+        このブラウザに保存する
+      </label>
+    </div>
+  </div>
+
+  <div id="clarityError" style="display:none;margin:0 28px 16px;background:#2a1010;border:1px solid #4a1a1a;border-radius:8px;padding:12px;font-size:13px;color:#f87171"></div>
+
+  <!-- Controls -->
+  <div class="controls" id="clarityControls" style="display:none">
+    <span class="ctrl-label">期間：</span>
+    <select class="date-select" id="clarityDateRange" onchange="onClarityDateChange()">
+      <option value="7" selected>過去7日間</option>
+      <option value="14">過去14日間</option>
+      <option value="30">過去30日間</option>
+      <option value="custom">カスタム ▾</option>
+    </select>
+    <div id="clarityCustomWrap" style="display:none;align-items:center;gap:6px">
+      <input type="date" class="date-select" id="claritySince" style="padding:7px 10px;font-size:12px" />
+      <span style="color:#555;font-size:12px">〜</span>
+      <input type="date" class="date-select" id="clarityUntil" style="padding:7px 10px;font-size:12px" />
+      <button class="btn btn-primary" style="padding:7px 14px;font-size:12px" onclick="loadClarityData()">適用</button>
+    </div>
+    <button class="btn btn-secondary" onclick="loadClarityData()">🔄 更新</button>
+    <span style="font-size:11px;color:#555" id="clarityUpdated"></span>
+    <span style="font-size:11px;color:#f59e0b" id="clarityApiNote">⚠ API上限：1日10回</span>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid" id="clarityKpiGrid" style="display:none">
+    <div class="kpi-card"><div class="kpi-label">総セッション数</div><div class="kpi-value" id="cKpiSessions">—</div><div class="kpi-sub" id="cKpiSessionsSub"></div></div>
+    <div class="kpi-card"><div class="kpi-label">デッドクリック率</div><div class="kpi-value" id="cKpiDead">—</div><div class="kpi-sub" id="cKpiDeadSub">反応しないクリック</div></div>
+    <div class="kpi-card"><div class="kpi-label">レイジクリック率</div><div class="kpi-value" id="cKpiRage">—</div><div class="kpi-sub" id="cKpiRageSub">連打クリック</div></div>
+    <div class="kpi-card"><div class="kpi-label">クイックバック率</div><div class="kpi-value" id="cKpiQuick">—</div><div class="kpi-sub" id="cKpiQuickSub">すぐ戻ったセッション</div></div>
+    <div class="kpi-card"><div class="kpi-label">平均スクロール深度</div><div class="kpi-value" id="cKpiScroll">—</div><div class="kpi-sub" id="cKpiScrollSub"></div></div>
+    <div class="kpi-card"><div class="kpi-label">スクリプトエラー率</div><div class="kpi-value" id="cKpiError">—</div><div class="kpi-sub" id="cKpiErrorSub">JSエラー発生</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-grid" id="clarityChartGrid" style="display:none">
+    <div class="chart-card">
+      <div class="chart-title">UX問題の発生率（%）</div>
+      <div class="chart-canvas-wrap"><canvas id="clarityRadarChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">クリック品質の内訳</div>
+      <div class="chart-canvas-wrap"><canvas id="clarityClickChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">UXスコア（総合評価）</div>
+      <div class="chart-canvas-wrap"><canvas id="clarityScoreChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="table-section" id="clarityInsightSection" style="display:none">
+    <div class="section-header"><div class="section-title">詳細指標</div></div>
+    <div class="table-wrap"><div id="clarityInsightContent"></div></div>
+  </div>
+
+  <!-- AI Analysis -->
+  <div class="analysis-section" id="clarityAnalysisSection" style="display:none">
+    <div class="analysis-box">
+      <div class="analysis-header">
+        <div class="ai-icon">✦</div>
+        <div class="analysis-title">AI UX分析レポート</div>
+        <button class="btn-analyze" onclick="runClarityAnalysis()" style="margin-left:auto">分析を実行</button>
+      </div>
+      <div class="analysis-content" id="clarityAnalysisContent" style="color:#555">「分析を実行」を押すと、ClarityデータをもとにAIがUX改善提案を生成します。</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Rakuten RPP Section -->
+<div class="rakuten-section" id="rakutenSection">
+
+  <!-- Upload Box -->
+  <div class="rakuten-upload-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:4px">🛒 楽天RPP広告 パフォーマンスレポート</div>
+        <div style="font-size:12px;color:#666">月次CSVを追加アップロードするごとにデータが蓄積されます</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="rkt-guide-btn" onclick="toggleRktGuide()">📋 CSVダウンロード手順</button>
+        <button class="rkt-guide-btn" style="background:#2a2f40;color:#aaa" onclick="toggleRktFileManager()">📁 保存データ管理</button>
+        <button class="rkt-guide-btn" style="background:#2a1010;color:#f87171" onclick="clearAllRktData()">🗑 全データ削除</button>
+      </div>
+    </div>
+
+    <!-- 保存データ管理パネル -->
+    <div id="rktFileManager" style="display:none;background:#0f1117;border:1px solid #2a2f40;border-radius:8px;padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:10px">保存済みファイル一覧</div>
+      <div id="rktFileList" style="font-size:12px;color:#888">読み込み中...</div>
+    </div>
+
+    <!-- ガイド（折りたたみ） -->
+    <div id="rktGuide" style="display:none;background:#0f1117;border:1px solid #2a2f40;border-radius:8px;padding:14px;margin-bottom:14px;font-size:12px;color:#aaa;line-height:1.8">
+      <strong style="color:#f4452a">RMSでのCSVダウンロード手順</strong><br>
+      1. RMSにログイン<br>
+      2. 左メニュー「広告・アフィリエイト・楽天大学」をクリック<br>
+      3.「1. 広告（プロモーションメニュー）」→「検索連動型広告（RPP）」<br>
+      4. 上部タブ「パフォーマンスレポート」をクリック<br>
+      5. 集計単位：<strong style="color:#f4452a">日別</strong>、期間を選択<br>
+      6. 出力項目：クリック数・広告費・売上金額・ROAS・CVRにチェック<br>
+      7.「全キャンペーンダウンロード」をクリック → ZIPを解凍してCSVをアップロード
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:500">① RPP広告実績CSV</div>
+        <div class="upload-drop-zone" id="rktDropZone" onclick="document.getElementById('rktFileInput').click()"
+             ondragover="event.preventDefault();this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="handleRktDrop(event)">
+          <div class="upload-icon">📊</div>
+          <div class="upload-text" style="font-size:13px">RPPレポートCSVをドロップ</div>
+          <div class="upload-sub">パフォーマンスレポート（商品別）</div>
+        </div>
+        <input type="file" id="rktFileInput" accept=".csv" style="display:none" onchange="handleRktFile(this.files[0])">
+      </div>
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:500">② 商品カテゴリCSV <span style="color:#555;font-weight:400">（任意・一度登録すれば保存されます）</span></div>
+        <div class="upload-drop-zone" id="rktCatDropZone" onclick="document.getElementById('rktCatFileInput').click()"
+             ondragover="event.preventDefault();this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="handleRktCatDrop(event)"
+             style="border-color:#2a3a2a">
+          <div class="upload-icon">🗂️</div>
+          <div class="upload-text" style="font-size:13px">商品カテゴリCSVをドロップ</div>
+          <div class="upload-sub">normal-item.csv または 手動作成CSV</div>
+        </div>
+        <input type="file" id="rktCatFileInput" accept=".csv" style="display:none" onchange="handleRktCatFile(this.files[0])">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">
+      <div id="rktFileInfo" style="font-size:12px;color:#34d058"><span id="rktFileName"></span></div>
+      <div id="rktCatInfo" style="font-size:12px;color:#34d058"><span id="rktCatName"></span></div>
+    </div>
+    <div id="rktError" style="display:none;font-size:12px;color:#f87171;margin-bottom:10px"></div>
+  </div>
+
+  <!-- 期間フィルター -->
+  <div class="controls" id="rktControls" style="display:none">
+    <span class="ctrl-label">期間：</span>
+    <select class="date-select" id="rktDateRange" onchange="onRktDateRangeChange()">
+      <option value="all" selected>全期間（蓄積データ全て）</option>
+      <option value="30">過去30日間</option>
+      <option value="60">過去60日間</option>
+      <option value="90">過去90日間</option>
+      <option value="custom">カスタム ▾</option>
+    </select>
+    <div id="rktCustomDateWrap" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+      <input type="date" class="date-select" id="rktCustomSince" style="padding:7px 10px;font-size:12px" onchange="onRktCustomDateChange()" />
+      <span style="color:#555;font-size:12px">〜</span>
+      <input type="date" class="date-select" id="rktCustomUntil" style="padding:7px 10px;font-size:12px" onchange="onRktCustomDateChange()" />
+      <button class="btn btn-primary" id="rktApplyBtn" style="padding:7px 14px;font-size:12px" onclick="renderRktAll()">適用</button>
+      <span id="rktCustomHint" style="font-size:11px;color:#555"></span>
+    </div>
+    <span class="filter-count" id="rktFilterCount"></span>
+    <button class="btn btn-secondary" onclick="exportRktCSV()">📥 CSV</button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid" id="rktKpiGrid" style="display:none">
+    <div class="kpi-card"><div class="kpi-label">総広告費</div><div class="kpi-value" id="rktKpiSpend">—</div><div class="kpi-sub" id="rktKpiSpendSub"></div></div>
+    <div class="kpi-card"><div class="kpi-label">総売上金額</div><div class="kpi-value" id="rktKpiRevenue">—</div><div class="kpi-sub" id="rktKpiRevenueSub"></div></div>
+    <div class="kpi-card"><div class="kpi-label">平均ROAS</div><div class="kpi-value" id="rktKpiRoas">—</div><div class="kpi-sub" id="rktKpiRoasSub"></div></div>
+    <div class="kpi-card"><div class="kpi-label">総クリック数</div><div class="kpi-value" id="rktKpiClicks">—</div><div class="kpi-sub" id="rktKpiClicksSub"></div></div>
+    <div class="kpi-card"><div class="kpi-label">平均CTR</div><div class="kpi-value" id="rktKpiCtr">—</div><div class="kpi-sub" id="rktKpiCtrSub"></div></div>
+    <div class="kpi-card"><div class="kpi-label">平均CVR</div><div class="kpi-value" id="rktKpiCvr">—</div><div class="kpi-sub" id="rktKpiCvrSub"></div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-grid" id="rktChartGrid" style="display:none">
+    <div class="chart-card"><div class="chart-title">広告費・売上 TOP15（商品別）</div><div class="chart-canvas-wrap"><canvas id="rktTrendChart"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">ROAS TOP15（商品別・緑:達成/黄:要改善/赤:要対応）</div><div class="chart-canvas-wrap"><canvas id="rktRoasChart"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">クリック数 TOP15（商品別）</div><div class="chart-canvas-wrap"><canvas id="rktClickChart"></canvas></div></div>
+  </div>
+  <!-- カテゴリ別チャート（カテゴリマップがある時のみ表示） -->
+  <div class="chart-grid" id="rktCatChartGrid" style="display:none">
+    <div class="chart-card"><div class="chart-title">📁 カテゴリ別 広告費・売上</div><div class="chart-canvas-wrap"><canvas id="rktCatSpendChart"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">📁 カテゴリ別 ROAS</div><div class="chart-canvas-wrap"><canvas id="rktCatRoasChart"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">📁 カテゴリ別 クリック数</div><div class="chart-canvas-wrap"><canvas id="rktCatClickChart"></canvas></div></div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-section" id="rktTableSection" style="display:none">
+    <div class="section-header">
+      <div class="section-title">日別実績一覧</div>
+      <button class="btn btn-secondary" style="font-size:12px;padding:7px 14px" onclick="exportRktCSV()">📥 CSVエクスポート</button>
+    </div>
+    <div class="table-wrap"><div id="rktTableContent"></div></div>
+  </div>
+
+  <!-- AI Analysis -->
+  <div class="analysis-section" id="rktAnalysisSection" style="display:none">
+    <div class="analysis-box">
+      <div class="analysis-header">
+        <div class="ai-icon">✦</div>
+        <div class="analysis-title">AI分析レポート（楽天RPP）</div>
+        <button class="btn-analyze" onclick="runRktAnalysis()" style="margin-left:auto">分析を実行</button>
+      </div>
+      <div class="analysis-content" id="rktAnalysisContent" style="color:#555">「分析を実行」を押すと、RPPデータをもとにAIが改善提案を生成します。</div>
+    </div>
+  </div>
+
+</div>
+
 <!-- AI Analysis -->
 <div class="analysis-section" id="analysisSection" style="display:none">
   <div class="analysis-box">
@@ -364,6 +613,45 @@
     </div>
     <div class="analysis-content" id="analysisContent" style="color:#555">「分析を実行」を押すと、キャンペーンデータをもとにAIが改善提案を生成します。</div>
   </div>
+</div>
+
+<!-- GA4 Section -->
+<div id="ga4Section" style="display:none;padding:28px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div style="font-size:14px;font-weight:600;color:#fff">GA4 アクセス解析</div>
+      <div style="font-size:12px;color:#666;margin-top:2px">Google Analytics 4 · 過去30日間</div>
+    </div>
+    <button onclick="loadGa4Data()" style="padding:8px 16px;background:#0082fb;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;font-weight:500">🔄 更新</button>
+  </div>
+
+  <!-- KPIカード -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">セッション数</div>
+      <div id="ga4Sessions" style="font-size:26px;font-weight:700;color:#fff">-</div>
+    </div>
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">ユーザー数</div>
+      <div id="ga4Users" style="font-size:26px;font-weight:700;color:#fff">-</div>
+    </div>
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">ページビュー</div>
+      <div id="ga4Pageviews" style="font-size:26px;font-weight:700;color:#fff">-</div>
+    </div>
+    <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px">
+      <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">直帰率</div>
+      <div id="ga4BounceRate" style="font-size:26px;font-weight:700;color:#fff">-</div>
+    </div>
+  </div>
+
+  <!-- グラフ -->
+  <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:20px;margin-bottom:24px">
+    <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:16px">セッション数推移（過去30日）</div>
+    <canvas id="ga4Chart" height="80"></canvas>
+  </div>
+
+  <div id="ga4Status" style="text-align:center;color:#666;font-size:13px;padding:20px">「更新」ボタンを押してデータを読み込んでください</div>
 </div>
 
 <script>
@@ -384,6 +672,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  // Clarityトークンを自動復元
+  const ct = localStorage.getItem('clarity_token_v1');
+  const cp = localStorage.getItem('clarity_project_v1');
+  if (ct) { const el = document.getElementById('clarityTokenInput'); if(el) el.value = ct; }
+  if (cp) { const el = document.getElementById('clarityProjectInput'); if(el) el.value = cp; }
+
+  // 楽天RPP保存データを自動ロード
+  loadRktStoredData();
+
   // ② localStorageのトークンをチェック
   const savedToken = localStorage.getItem(TOKEN_KEY);
   if (savedToken) {
@@ -403,9 +700,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     try {
       await connectAPI(savedToken);
     } catch(e) {
-      // 自動接続失敗時はパネルをリセット
       resetSetupPanel();
     }
+    // connectAPI内でエラーが出てもresetを保証
+    if (!accessToken) resetSetupPanel();
   }
 });
 
@@ -1100,6 +1398,1010 @@ function exportCSV() {
   a.href = URL.createObjectURL(blob); a.download = `meta_ads_${formatDate(0)}.csv`; a.click();
 }
 
+// ============ プラットフォーム切り替え ============
+let currentPlatform = 'meta';
+let rktData = []; // 楽天データ（表示用・全期間マージ済み）
+let rktReportType = 'item'; // 'item'=商品別 / 'daily'=日別
+let rktStoredFiles = []; // 保存済みファイル一覧 [{name, date, period, count}]
+const RKT_DATA_KEY = 'rkt_data_v1';
+const RKT_FILES_KEY = 'rkt_files_v1';
+const RKT_CAT_KEY  = 'rkt_cat_v1';
+let rktCategoryMap = {}; // { 商品管理番号: カテゴリ名 }
+let rktTrendChart = null, rktRoasChart = null, rktClickChart = null;
+
+function switchPlatform(platform) {
+  currentPlatform = platform;
+  document.getElementById('tab-meta').className = 'platform-tab' + (platform === 'meta' ? ' active' : '');
+  document.getElementById('tab-rakuten').className = 'platform-tab' + (platform === 'rakuten' ? ' active' : '');
+  document.getElementById('rakutenSection').style.display = platform === 'rakuten' ? 'block' : 'none';
+  document.getElementById('claritySection').style.display = platform === 'clarity' ? 'block' : 'none';
+  document.getElementById('tab-clarity').className = 'platform-tab' + (platform === 'clarity' ? ' active' : '');
+  document.getElementById('tab-ga4').className = 'platform-tab' + (platform === 'ga4' ? ' active' : '');
+  document.getElementById('ga4Section').style.display = platform === 'ga4' ? 'block' : 'none';
+  const logos = { meta: 'M', rakuten: '楽', clarity: 'C', ga4: 'G' };
+  const bgs = { meta: 'linear-gradient(135deg,#0082fb,#0052d4)', rakuten: 'linear-gradient(135deg,#f4452a,#cc2200)', clarity: 'linear-gradient(135deg,#00a4ef,#0078d4)', ga4: 'linear-gradient(135deg,#e37400,#e8600a)' };
+  const titles = { meta: 'Meta広告 日次実績ダッシュボード', rakuten: '楽天RPP広告 実績ダッシュボード', clarity: 'Microsoft Clarity UX分析ダッシュボード', ga4: 'GA4 アクセス解析ダッシュボード' };
+  document.getElementById('platformLogo').textContent = logos[platform] || 'M';
+  document.getElementById('platformLogo').style.background = bgs[platform] || bgs.meta;
+  document.getElementById('platformTitle').textContent = titles[platform] || titles.meta;
+
+  if (platform === 'meta') {
+    if (!accessToken) {
+      document.getElementById('setupPanel').style.display = 'block';
+      ['controls','kpiGrid','chartGrid','chartGridDaily','compareSection','tableSection','analysisSection'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+    } else {
+      document.getElementById('setupPanel').style.display = 'none';
+      const showMap = { controls:'flex', kpiGrid:'grid', chartGrid:'grid', chartGridDaily:'grid', compareSection:'block', tableSection:'block', analysisSection:'block' };
+      Object.entries(showMap).forEach(([id, disp]) => {
+        const el = document.getElementById(id); if (el) el.style.display = disp;
+      });
+    }
+  } else {
+    ['setupPanel','controls','kpiGrid','chartGrid','chartGridDaily','compareSection','tableSection','analysisSection'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = 'none';
+    });
+  }
+
+  if (platform !== 'clarity') {
+    const cs = document.getElementById('claritySection');
+    if (cs) cs.style.display = 'none';
+  }
+
+  if (platform === 'ga4') loadGa4Data();
+}
+
+function toggleRktGuide() {
+  const g = document.getElementById('rktGuide');
+  g.style.display = g.style.display === 'none' ? 'block' : 'none';
+}
+
+function handleRktDrop(e) {
+  e.preventDefault();
+  document.getElementById('rktDropZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleRktFile(file);
+}
+
+function handleRktFile(file) {
+  if (!file) return;
+  const fr = new FileReader();
+  fr.onload = (ev) => {
+    try { parseRktCSV(ev.target.result, file.name); }
+    catch(err) { showRktError('CSVの解析に失敗しました: ' + err.message); }
+  };
+  fr.readAsText(file, 'Shift-JIS');
+}
+
+function parseRktCSV(text, filename) {
+  // BOM除去・改行正規化
+  text = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const allLines = text.split('\n');
+
+  // ヘッダー行を検出（コントロールカラムまたはクリック数を含む行）
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(allLines.length, 15); i++) {
+    if (allLines[i].includes('クリック数') || allLines[i].includes('コントロールカラム')) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) throw new Error('ヘッダー行が見つかりません。楽天RPPパフォーマンスレポートのCSVを使用してください。');
+
+  const headers = allLines[headerIdx].split(',').map(h => h.replace(/"/g,'').trim());
+
+  // カラムインデックスを柔軟に検出
+  const findCol = (...keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
+
+  // 楽天RPP商品別レポートのカラム名に対応
+  const colName    = findCol('商品管理番号','商品名');
+  const colUrl     = findCol('商品ページURL');
+  const colDate    = findCol('日付');
+  const colClick   = findCol('クリック数(合計)','クリック数');
+  const colSpend   = findCol('実績額(合計)','広告費','実績額');
+  const colRevenue = findCol('売上金額(合計720時間)','売上金額(合計12時間)','売上金額');
+  const colSales   = findCol('売上件数(合計720時間)','売上件数(合計12時間)','売上件数');
+  const colRoas    = findCol('ROAS(合計720時間)(%)','ROAS(合計720時間)','ROAS(合計12時間)(%)','ROAS(合計12時間)','ROAS');
+  const colCvr     = findCol('CVR(合計720時間)(%)','CVR(合計720時間)','CVR(合計12時間)(%)','CVR(合計12時間)','CVR');
+  const colCtr     = findCol('CTR(%)','CTR');
+  const colCpc     = findCol('CPC実績(合計)','商品CPC','CPC');
+  const colCpo     = findCol('注文獲得単価(合計720時間)','注文獲得単価');
+  const colBid     = findCol('入札単価');
+
+  const rows = [];
+  for (let i = headerIdx + 1; i < allLines.length; i++) {
+    const line = allLines[i];
+    if (!line.trim()) continue;
+    const cells = line.split(',').map(c => c.replace(/"/g,'').trim());
+    if (cells.length < 5) continue;
+
+    // 日付・商品名を取得
+    const rawDate = colDate >= 0 ? cells[colDate] : '';
+    const name    = colName >= 0 ? cells[colName] : (colUrl >= 0 ? cells[colUrl].split('/').slice(-2,-1)[0] : `商品${i}`);
+
+    // 日付を正規化（「2026年06月01日～2026年06月17日」→ 開始日を使用）
+    let dateStr = rawDate
+      .replace(/（.*?）/g,'')
+      .replace(/[年]/g,'-').replace(/[月]/g,'-').replace(/[日]/g,'')
+      .split('～')[0].split('~')[0].trim();
+
+    rows.push({
+      name:    name || `商品${i}`,
+      date:    dateStr || '不明',
+      clicks:  colClick  >= 0 ? parseInt(cells[colClick]  || 0) : 0,
+      spend:   colSpend  >= 0 ? parseFloat(cells[colSpend] || 0) : 0,
+      revenue: colRevenue>= 0 ? parseFloat(cells[colRevenue]|| 0) : 0,
+      sales:   colSales  >= 0 ? parseInt(cells[colSales]   || 0) : 0,
+      roas:    colRoas   >= 0 ? parseFloat(cells[colRoas]  || 0) : 0,
+      cvr:     colCvr    >= 0 ? parseFloat(cells[colCvr]   || 0) : 0,
+      ctr:     colCtr    >= 0 ? parseFloat(cells[colCtr]   || 0) : 0,
+      cpc:     colCpc    >= 0 ? parseFloat(cells[colCpc]   || 0) : 0,
+      cpo:     colCpo    >= 0 ? parseFloat(cells[colCpo]   || 0) : 0,
+      bid:     colBid    >= 0 ? parseFloat(cells[colBid]   || 0) : 0,
+    });
+  }
+
+  if (rows.length === 0) throw new Error('データ行が見つかりません。');
+
+  // 集計単位を自動判定（日付が範囲かどうか）
+  const isItemReport = rows[0].date.includes('～') || rows[0].date.includes('~') || rows.length > 0 && rows.every(r => r.date === rows[0].date);
+
+  rktReportType = isItemReport ? 'item' : 'daily';
+  const period = rows[0]?.date || filename;
+
+  // 既存の保存データを読み込んでマージ
+  saveRktFile(filename, period, rows);
+
+  document.getElementById('rktError').style.display = 'none';
+  renderRktAll();
+}
+
+function saveRktFile(filename, period, newRows) {
+  // 保存済みファイル一覧を取得
+  let stored = [];
+  try { stored = JSON.parse(localStorage.getItem(RKT_DATA_KEY) || '[]'); } catch(e) { stored = []; }
+
+  // 同じファイル名なら上書き、違えば追加
+  const existIdx = stored.findIndex(f => f.filename === filename);
+  if (existIdx >= 0) {
+    stored[existIdx] = { filename, period, rows: newRows, savedAt: new Date().toLocaleDateString('ja-JP') };
+  } else {
+    stored.push({ filename, period, rows: newRows, savedAt: new Date().toLocaleDateString('ja-JP') });
+  }
+
+  try {
+    localStorage.setItem(RKT_DATA_KEY, JSON.stringify(stored));
+  } catch(e) {
+    showRktError('データの保存に失敗しました（ストレージ容量不足の可能性）');
+  }
+
+  // 全ファイルのrowsをマージして表示
+  mergeAndRenderRktData(stored);
+}
+
+function mergeAndRenderRktData(stored) {
+  if (!stored || stored.length === 0) {
+    rktData = [];
+    updateRktFileInfo(0, '');
+    return;
+  }
+  // 全ファイルのrowsを結合
+  rktData = stored.flatMap(f => f.rows || []);
+  const totalItems = rktData.length;
+  const periods = stored.map(f => f.period).join('、');
+  updateRktFileInfo(stored.length, periods, totalItems);
+}
+
+function updateRktFileInfo(fileCount, periods, itemCount) {
+  const el = document.getElementById('rktFileName');
+  if (fileCount === 0) {
+    el.textContent = '';
+    document.getElementById('rktFileInfo').style.display = 'none';
+  } else {
+    el.textContent = `✓ ${fileCount}ファイル蓄積済み（${itemCount}件）`;
+    document.getElementById('rktFileInfo').style.display = 'block';
+  }
+}
+
+// ===== カテゴリCSV処理 =====
+function handleRktCatDrop(e) {
+  e.preventDefault();
+  document.getElementById('rktCatDropZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleRktCatFile(file);
+}
+
+function handleRktCatFile(file) {
+  if (!file) return;
+  // まずUTF-8で試み、失敗したらShift-JISで再試行
+  const tryRead = (encoding) => {
+    const fr = new FileReader();
+    fr.onload = (ev) => {
+      try {
+        parseRktCatCSV(ev.target.result, file.name);
+      } catch(err) {
+        if (encoding === 'UTF-8') {
+          // UTF-8で失敗したらShift-JISで再試行
+          tryRead('Shift-JIS');
+        } else {
+          showRktError('カテゴリCSV解析エラー: ' + err.message);
+        }
+      }
+    };
+    fr.readAsText(file, encoding);
+  };
+  tryRead('UTF-8');
+}
+
+function parseRktCatCSV(text, filename) {
+  text = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = text.split('\n').filter(l => l.trim());
+
+  // ヘッダー行を探す
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    if (lines[i].includes('商品管理番号') || lines[i].includes('カテゴリ') || lines[i].includes('item_id')) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) headerIdx = 0;
+
+  const headers = lines[headerIdx].split(',').map(h => h.replace(/"/g,'').trim());
+  const findCol = (...keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
+
+  const colId  = findCol('商品管理番号','item_id','商品ID','管理番号');
+  const colCat = findCol('カテゴリ','category','ジャンル','genre','分類');
+
+  if (colId < 0) throw new Error('「商品管理番号」列が見つかりません');
+  if (colCat < 0) throw new Error('「カテゴリ」列が見つかりません');
+
+  const newMap = {};
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const cells = lines[i].split(',').map(c => c.replace(/"/g,'').trim());
+    const id  = cells[colId]  || '';
+    const cat = cells[colCat] || '';
+    if (id && cat) newMap[id.toLowerCase()] = cat;
+  }
+
+  const count = Object.keys(newMap).length;
+  if (count === 0) throw new Error('カテゴリデータが見つかりません');
+
+  // 既存マップとマージ
+  rktCategoryMap = { ...rktCategoryMap, ...newMap };
+  localStorage.setItem(RKT_CAT_KEY, JSON.stringify(rktCategoryMap));
+
+  document.getElementById('rktCatInfo').style.display = 'block';
+  document.getElementById('rktCatName').textContent = `✓ カテゴリ ${count}件 登録済み（${filename}）`;
+
+  // 既にRPPデータがある場合はカテゴリを再付与して再描画
+  if (rktData.length > 0) renderRktAll();
+  showRktSuccess(`カテゴリ ${count}件 を登録しました`);
+}
+
+function getCategoryForItem(itemId) {
+  if (!itemId) return 'その他';
+  const id = itemId.toLowerCase();
+  // 完全一致
+  if (rktCategoryMap[id]) return rktCategoryMap[id];
+  // 部分一致（商品管理番号の前半部分で一致するケース）
+  for (const key of Object.keys(rktCategoryMap)) {
+    if (id.startsWith(key) || key.startsWith(id.split('_')[0])) return rktCategoryMap[key];
+  }
+  return 'その他';
+}
+
+function showRktSuccess(msg) {
+  const el = document.getElementById('rktError');
+  el.textContent = '✓ ' + msg;
+  el.style.color = '#34d058';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; el.style.color = '#f87171'; }, 3000);
+}
+
+function loadRktStoredData() {
+  try {
+    // カテゴリマップを復元
+    const savedCat = localStorage.getItem(RKT_CAT_KEY);
+    if (savedCat) {
+      rktCategoryMap = JSON.parse(savedCat);
+      const count = Object.keys(rktCategoryMap).length;
+      if (count > 0) {
+        document.getElementById('rktCatInfo').style.display = 'block';
+        document.getElementById('rktCatName').textContent = `✓ カテゴリ ${count}件 登録済み`;
+      }
+    }
+    // RPPデータを復元
+    const stored = JSON.parse(localStorage.getItem(RKT_DATA_KEY) || '[]');
+    if (stored.length > 0) {
+      mergeAndRenderRktData(stored);
+      renderRktAll();
+      renderRktFileList(stored);
+    }
+  } catch(e) { console.log('Rakuten data load error:', e); }
+}
+
+function renderRktFileList(stored) {
+  const el = document.getElementById('rktFileList');
+  if (!stored || stored.length === 0) {
+    el.innerHTML = '<span style="color:#555">保存済みデータはありません</span>';
+    return;
+  }
+  el.innerHTML = stored.map((f, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1e2130">
+      <div>
+        <div style="color:#ccc;font-weight:500">${f.filename}</div>
+        <div style="color:#555;font-size:11px">期間: ${f.period} / ${(f.rows||[]).length}商品 / 保存日: ${f.savedAt||''}</div>
+      </div>
+      <button onclick="deleteRktFile(${i})" style="background:none;border:1px solid #4a1a1a;color:#f87171;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer">削除</button>
+    </div>`).join('');
+}
+
+function toggleRktFileManager() {
+  const el = document.getElementById('rktFileManager');
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    try {
+      const stored = JSON.parse(localStorage.getItem(RKT_DATA_KEY) || '[]');
+      renderRktFileList(stored);
+    } catch(e) {}
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function deleteRktFile(idx) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(RKT_DATA_KEY) || '[]');
+    stored.splice(idx, 1);
+    localStorage.setItem(RKT_DATA_KEY, JSON.stringify(stored));
+    mergeAndRenderRktData(stored);
+    renderRktFileList(stored);
+    if (stored.length > 0) renderRktAll();
+    else {
+      ['rktControls','rktKpiGrid','rktChartGrid','rktTableSection','rktAnalysisSection'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+    }
+  } catch(e) {}
+}
+
+function clearAllRktData() {
+  if (!confirm('保存済みの楽天RPPデータをすべて削除しますか？')) return;
+  localStorage.removeItem(RKT_DATA_KEY);
+  rktData = [];
+  updateRktFileInfo(0, '');
+  renderRktFileList([]);
+  ['rktKpiGrid','rktChartGrid','rktTableSection','rktAnalysisSection'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+}
+
+function renderRktAll() {
+  if (rktData.length === 0) return;
+  renderRktKPIs();
+  renderRktCharts();
+  renderRktTable();
+  ['rktControls','rktKpiGrid','rktChartGrid','rktTableSection','rktAnalysisSection'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === 'rktKpiGrid' || id === 'rktChartGrid' ? 'grid' : id === 'rktControls' ? 'flex' : 'block';
+  });
+
+  // カテゴリマップがある場合はカテゴリチャートも表示
+  const hasCat = Object.keys(rktCategoryMap).length > 0;
+  const catGrid = document.getElementById('rktCatChartGrid');
+  if (catGrid) catGrid.style.display = hasCat ? 'grid' : 'none';
+  if (hasCat) renderRktCategoryCharts(getFilteredRktData());
+}
+
+function showRktError(msg) {
+  document.getElementById('rktError').textContent = '⚠ ' + msg;
+  document.getElementById('rktError').style.display = 'block';
+}
+
+function getFilteredRktData() {
+  const val = document.getElementById('rktDateRange')?.value || 'all';
+  if (val === 'all' || rktData.length === 0) return rktData;
+
+  let since, until;
+  const today = formatDate(0);
+
+  if (val === 'custom') {
+    since = document.getElementById('rktCustomSince')?.value;
+    until = document.getElementById('rktCustomUntil')?.value;
+    if (!since || !until) return rktData;
+  } else {
+    since = formatDate(parseInt(val));
+    until = today;
+  }
+
+  // 楽天CSVの日付は「2026-06-01～2026-06-17」形式なので開始日を抽出して比較
+  return rktData.filter(r => {
+    const d = (r.date || '').split('～')[0].split('~')[0].trim().replace(/年/,'-').replace(/月/,'-').replace(/日/,'');
+    return d >= since && d <= until;
+  });
+}
+
+function onRktDateRangeChange() {
+  const val = document.getElementById('rktDateRange').value;
+  const wrap = document.getElementById('rktCustomDateWrap');
+  if (val === 'custom') {
+    wrap.style.display = 'flex';
+    if (!document.getElementById('rktCustomSince').value) {
+      document.getElementById('rktCustomSince').value = formatDate(30);
+      document.getElementById('rktCustomUntil').value = formatDate(0);
+      onRktCustomDateChange();
+    }
+  } else {
+    wrap.style.display = 'none';
+    renderRktAll();
+  }
+}
+
+function onRktCustomDateChange() {
+  const since = document.getElementById('rktCustomSince').value;
+  const until = document.getElementById('rktCustomUntil').value;
+  const hint  = document.getElementById('rktCustomHint');
+  const btn   = document.getElementById('rktApplyBtn');
+  if (since && until) {
+    if (since > until) {
+      hint.textContent = '⚠ 開始日は終了日より前にしてください';
+      hint.style.color = '#f87171';
+      if (btn) btn.disabled = true;
+    } else {
+      const days = Math.round((new Date(until) - new Date(since)) / 86400000) + 1;
+      hint.textContent = days + '日間';
+      hint.style.color = '#888';
+      if (btn) btn.disabled = false;
+    }
+    if (since) document.getElementById('rktCustomUntil').min = since;
+  }
+}
+
+function renderRktAll() {
+  if (rktData.length === 0) return;
+  const filtered = getFilteredRktData();
+  document.getElementById('rktFilterCount').textContent =
+    filtered.length < rktData.length ? filtered.length + ' / ' + rktData.length + ' 商品' : rktData.length + ' 商品';
+  renderRktKPIs(filtered);
+  renderRktCharts(filtered);
+  renderRktTable(filtered);
+  ['rktControls','rktKpiGrid','rktChartGrid','rktTableSection','rktAnalysisSection'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === 'rktKpiGrid' || id === 'rktChartGrid' ? 'grid' : id === 'rktControls' ? 'flex' : 'block';
+  });
+}
+
+let rktCatSpendChart = null, rktCatRoasChart = null, rktCatClickChart = null;
+
+function renderRktCategoryCharts(data) {
+  data = data || rktData;
+  // カテゴリごとに集計
+  const catMap = {};
+  for (const r of data) {
+    const cat = getCategoryForItem(r.name) || 'その他';
+    if (!catMap[cat]) catMap[cat] = { spend: 0, revenue: 0, clicks: 0, sales: 0 };
+    catMap[cat].spend   += r.spend;
+    catMap[cat].revenue += r.revenue;
+    catMap[cat].clicks  += r.clicks;
+    catMap[cat].sales   += (r.sales || 0);
+  }
+
+  const cats    = Object.keys(catMap).sort((a,b) => catMap[b].spend - catMap[a].spend);
+  const spends  = cats.map(c => Math.round(catMap[c].spend));
+  const revenues= cats.map(c => Math.round(catMap[c].revenue));
+  const roases  = cats.map(c => catMap[c].spend > 0 ? Math.round(catMap[c].revenue / catMap[c].spend * 100) : 0);
+  const clicks  = cats.map(c => catMap[c].clicks);
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } },
+    scales: {
+      x: { ticks: { color: '#666', font: { size: 11 } }, grid: { color: '#1a1f2e' } },
+      y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } }
+    }
+  };
+
+  if (rktCatSpendChart) rktCatSpendChart.destroy();
+  rktCatSpendChart = new Chart(document.getElementById('rktCatSpendChart'), {
+    type: 'bar',
+    data: { labels: cats, datasets: [
+      { label: '広告費', data: spends,   backgroundColor: 'rgba(244,69,42,.7)',  borderRadius: 4 },
+      { label: '売上',   data: revenues, backgroundColor: 'rgba(52,208,88,.7)',  borderRadius: 4 }
+    ]},
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ¥' + (ctx.parsed.y||0).toLocaleString() } } } }
+  });
+
+  if (rktCatRoasChart) rktCatRoasChart.destroy();
+  rktCatRoasChart = new Chart(document.getElementById('rktCatRoasChart'), {
+    type: 'bar',
+    data: { labels: cats, datasets: [
+      { label: 'ROAS(%)', data: roases, backgroundColor: roases.map(v => v>=400?'rgba(52,208,88,.8)':v>=200?'rgba(245,158,11,.8)':'rgba(248,113,113,.8)'), borderRadius: 4 }
+    ]},
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => 'ROAS: ' + (ctx.parsed.y||0) + '%' } } } }
+  });
+
+  if (rktCatClickChart) rktCatClickChart.destroy();
+  rktCatClickChart = new Chart(document.getElementById('rktCatClickChart'), {
+    type: 'bar',
+    data: { labels: cats, datasets: [
+      { label: 'クリック数', data: clicks, backgroundColor: 'rgba(0,130,251,.7)', borderRadius: 4 }
+    ]},
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => 'クリック: ' + (ctx.parsed.y||0).toLocaleString() } } } }
+  });
+}
+
+function renderRktKPIs(data) {
+  data = data || rktData;
+  const totalSpend   = data.reduce((s,r) => s + r.spend, 0);
+  const totalRevenue = data.reduce((s,r) => s + r.revenue, 0);
+  const totalClicks  = data.reduce((s,r) => s + r.clicks, 0);
+  const totalSales   = data.reduce((s,r) => s + (r.sales||0), 0);
+  const avgRoas      = totalSpend > 0 ? totalRevenue / totalSpend * 100 : 0;
+  const avgCtr       = data.filter(r=>r.ctr>0).length > 0
+                       ? data.reduce((s,r)=>s+r.ctr,0) / data.filter(r=>r.ctr>0).length : 0;
+  const avgCvr       = data.filter(r=>r.cvr>0).length > 0
+                       ? data.reduce((s,r)=>s+r.cvr,0) / data.filter(r=>r.cvr>0).length : 0;
+  const unitLabel    = rktReportType === 'item' ? '商品' : '日';
+  const roasClass    = avgRoas >= 400 ? 'kpi-good' : avgRoas >= 200 ? '' : 'kpi-bad';
+
+  document.getElementById('rktKpiSpend').textContent    = '¥' + Math.round(totalSpend).toLocaleString();
+  document.getElementById('rktKpiRevenue').textContent  = '¥' + Math.round(totalRevenue).toLocaleString();
+  document.getElementById('rktKpiRoas').textContent     = avgRoas.toFixed(0) + '%';
+  document.getElementById('rktKpiRoas').className       = 'kpi-value ' + roasClass;
+  document.getElementById('rktKpiClicks').textContent   = totalClicks.toLocaleString();
+  document.getElementById('rktKpiCtr').textContent      = avgCtr.toFixed(2) + '%';
+  document.getElementById('rktKpiCvr').textContent      = avgCvr.toFixed(2) + '%';
+
+  document.getElementById('rktKpiSpendSub').textContent   = rktData.length + unitLabel + '分';
+  document.getElementById('rktKpiRevenueSub').textContent = '売上件数 ' + totalSales.toLocaleString() + '件';
+  document.getElementById('rktKpiRoasSub').textContent    = avgRoas >= 400 ? '✓ 目標達成' : avgRoas >= 200 ? '要改善' : '⚠ 要対応';
+  document.getElementById('rktKpiClicksSub').textContent  = '総クリック数';
+  document.getElementById('rktKpiCtrSub').textContent     = 'クリック率（平均）';
+  document.getElementById('rktKpiCvrSub').textContent     = '転換率（平均）';
+}
+
+function renderRktCharts(data) {
+  data = data || rktData;
+  // 商品別：消化金額上位15件でソート
+  const sorted = [...data].sort((a,b) => b.spend - a.spend).slice(0, 15);
+  const labels   = sorted.map(r => r.name.length > 16 ? r.name.slice(0,15)+'…' : r.name);
+  const spends   = sorted.map(r => r.spend);
+  const revenues = sorted.map(r => r.revenue);
+  const roases   = sorted.map(r => r.roas || (r.spend > 0 ? r.revenue / r.spend * 100 : 0));
+  const clicks   = sorted.map(r => r.clicks);
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } },
+    scales: {
+      x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } },
+      y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } }
+    },
+    elements: { point: { radius: 2, hoverRadius: 5 } }
+  };
+
+  const hbar = { ...baseOpts, indexAxis: 'y', scales: {
+    x: { ticks: { color: '#666', font:{size:10} }, grid: { color: '#1a1f2e' } },
+    y: { ticks: { color: '#ccc', font:{size:10} }, grid: { color: '#1a1f2e' } }
+  }};
+
+  if (rktTrendChart) rktTrendChart.destroy();
+  rktTrendChart = new Chart(document.getElementById('rktTrendChart'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: '広告費', data: spends,   backgroundColor: 'rgba(244,69,42,.7)', borderRadius: 3 },
+      { label: '売上',   data: revenues, backgroundColor: 'rgba(52,208,88,.7)', borderRadius: 3 }
+    ]},
+    options: { ...hbar, plugins: { ...hbar.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ¥' + (ctx.parsed.x||0).toLocaleString() } } } }
+  });
+
+  if (rktRoasChart) rktRoasChart.destroy();
+  rktRoasChart = new Chart(document.getElementById('rktRoasChart'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'ROAS(%)', data: roases, backgroundColor: roases.map(v => v>=400?'rgba(52,208,88,.7)':v>=200?'rgba(245,158,11,.7)':'rgba(248,113,113,.7)'), borderRadius: 3 }
+    ]},
+    options: { ...hbar, plugins: { ...hbar.plugins, tooltip: { callbacks: { label: ctx => 'ROAS: ' + (ctx.parsed.x||0).toFixed(0) + '%' } } } }
+  });
+
+  if (rktClickChart) rktClickChart.destroy();
+  rktClickChart = new Chart(document.getElementById('rktClickChart'), {
+    type: 'bar',
+    data: { labels, datasets: [
+      { label: 'クリック数', data: clicks, backgroundColor: 'rgba(0,130,251,.7)', borderRadius: 3 }
+    ]},
+    options: { ...hbar, plugins: { ...hbar.plugins, tooltip: { callbacks: { label: ctx => 'クリック: ' + (ctx.parsed.x||0).toLocaleString() } } } }
+  });
+}
+
+function renderRktTable(data) {
+  data = data || rktData;
+  const sorted = [...data].sort((a,b) => b.spend - a.spend);
+  const hasCatMap = Object.keys(rktCategoryMap).length > 0;
+  let html = `<table><thead><tr>
+    ${hasCatMap ? '<th style="text-align:left">カテゴリ</th>' : ''}
+    <th style="text-align:left">商品管理番号</th>
+    <th>広告費</th><th>売上金額</th><th>売上件数</th><th>ROAS</th>
+    <th>クリック数</th><th>CTR</th><th>CPC</th><th>CVR</th><th>入札単価</th>
+  </tr></thead><tbody>`;
+  for (const r of sorted) {
+    const roas = r.roas || (r.spend > 0 ? r.revenue / r.spend * 100 : 0);
+    const roasClass = roas >= 400 ? 'roas-high' : roas >= 200 ? 'roas-mid' : 'roas-low';
+    const cat = hasCatMap ? getCategoryForItem(r.name) : '';
+    html += `<tr>
+      ${hasCatMap ? `<td style="text-align:left"><span style="background:#1a2a1a;color:#34d058;border-radius:4px;padding:2px 8px;font-size:11px">${cat}</span></td>` : ''}
+      <td style="color:#e8e8e8;font-weight:500;text-align:left;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.name}">${r.name}</td>
+      <td>¥${Math.round(r.spend).toLocaleString()}</td>
+      <td>¥${Math.round(r.revenue).toLocaleString()}</td>
+      <td>${(r.sales||0).toLocaleString()}件</td>
+      <td class="${roasClass}">${roas.toFixed(0)}%</td>
+      <td>${r.clicks.toLocaleString()}</td>
+      <td>${r.ctr.toFixed(2)}%</td>
+      <td>¥${Math.round(r.cpc).toLocaleString()}</td>
+      <td>${r.cvr.toFixed(2)}%</td>
+      <td>¥${Math.round(r.bid||0).toLocaleString()}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('rktTableContent').innerHTML = html;
+}
+
+function exportRktCSV() {
+  if (!rktData.length) return;
+  const headers = ['日付','広告費','売上金額','ROAS(%)','クリック数','CVR(%)'];
+  const rows = rktData.map(r => {
+    const roas = r.roas || (r.spend > 0 ? r.revenue / r.spend * 100 : 0);
+    return [r.date, Math.round(r.spend), Math.round(r.revenue), roas.toFixed(0), r.clicks, r.cvr.toFixed(2)];
+  });
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'rakuten_rpp.csv'; a.click();
+}
+
+async function runRktAnalysis() {
+  if (!rktData.length) return;
+  const totalSpend   = rktData.reduce((s,r) => s + r.spend, 0);
+  const totalRevenue = rktData.reduce((s,r) => s + r.revenue, 0);
+  const avgRoas      = totalSpend > 0 ? totalRevenue / totalSpend * 100 : 0;
+  const avgCvr       = rktData.reduce((s,r) => s + r.cvr, 0) / rktData.length;
+
+  const prompt = `以下は楽天RPP広告の日別実績データです。
+
+期間: ${rktData[0].date} 〜 ${rktData[rktData.length-1].date}（${rktData.length}日間）
+総広告費: ¥${Math.round(totalSpend).toLocaleString()}
+総売上金額: ¥${Math.round(totalRevenue).toLocaleString()}
+平均ROAS: ${avgRoas.toFixed(0)}%
+平均CVR: ${avgCvr.toFixed(2)}%
+
+日別データ（上位10日）:
+${JSON.stringify(rktData.slice(0,10), null, 2)}
+
+このデータを分析して以下の観点で日本語で回答してください：
+1. 全体パフォーマンス評価（ROAS目標400%に対する達成状況）
+2. 良好な日/低調な日のパターン分析
+3. CVR・クリック数の傾向
+4. 具体的な改善施策
+5. 今後1週間の優先アクション
+
+箇条書きと見出しで分かりやすくまとめてください。`;
+
+  if (typeof sendPrompt === 'function') {
+    sendPrompt(prompt);
+    document.getElementById('rktAnalysisContent').textContent = '↑ チャットにデータを送りました。上のClaudeの返答をご確認ください。';
+  } else {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      document.getElementById('rktAnalysisContent').textContent = '✓ 分析用プロンプトをクリップボードにコピーしました。Claudeに貼り付けてください。';
+    } catch(e) {
+      document.getElementById('rktAnalysisContent').textContent = '以下をClaudeに貼り付けてください：\n\n' + prompt;
+    }
+  }
+}
+// ============ 楽天機能ここまで ============
+
+
+// ============ Clarity機能 ============
+const CLARITY_TOKEN_KEY    = 'clarity_token_v1';
+const CLARITY_PROJECT_KEY  = 'clarity_project_v1';
+const CLARITY_CACHE_KEY    = 'clarity_cache_v1';
+let clarityToken   = '';
+let clarityProject = '';
+let clarityData    = null;
+let clarityCChart = null, clarityRChart = null, claritySChart = null;
+
+// ページロード時にClarityのトークンを自動復元
+window.addEventListener('DOMContentLoaded', () => {
+  const t = localStorage.getItem(CLARITY_TOKEN_KEY);
+  const p = localStorage.getItem(CLARITY_PROJECT_KEY);
+  if (t && p) {
+    clarityToken   = t;
+    clarityProject = p;
+    document.getElementById('clarityTokenInput').value   = t;
+    document.getElementById('clarityProjectInput').value = p;
+  }
+}, { once: false });
+
+async function connectClarity() {
+  const token   = document.getElementById('clarityTokenInput').value.trim();
+  const project = document.getElementById('clarityProjectInput').value.trim();
+  if (!token)   { showClarityError('APIトークンを入力してください'); return; }
+  if (!project) { showClarityError('プロジェクトIDを入力してください'); return; }
+
+  clarityToken   = token;
+  clarityProject = project;
+
+  if (document.getElementById('saveClarityCheck')?.checked) {
+    localStorage.setItem(CLARITY_TOKEN_KEY,   token);
+    localStorage.setItem(CLARITY_PROJECT_KEY, project);
+  }
+
+  await loadClarityData();
+}
+
+function onClarityDateChange() {
+  const val = document.getElementById('clarityDateRange').value;
+  const wrap = document.getElementById('clarityCustomWrap');
+  if (val === 'custom') {
+    wrap.style.display = 'flex';
+    if (!document.getElementById('claritySince').value) {
+      document.getElementById('claritySince').value = formatDate(30);
+      document.getElementById('clarityUntil').value = formatDate(0);
+    }
+  } else {
+    wrap.style.display = 'none';
+    loadClarityData();
+  }
+}
+
+async function loadClarityData() {
+  if (!clarityToken || !clarityProject) { showClarityError('先に接続してください'); return; }
+
+  const val = document.getElementById('clarityDateRange')?.value || '7';
+  let since, until;
+  if (val === 'custom') {
+    since = document.getElementById('claritySince').value;
+    until = document.getElementById('clarityUntil').value;
+    if (!since || !until) return;
+  } else {
+    since = formatDate(parseInt(val));
+    until = formatDate(0);
+  }
+
+  // キャッシュチェック（同じ期間なら再取得しない）
+  const cacheKey = `${clarityProject}_${since}_${until}`;
+  try {
+    const cached = JSON.parse(localStorage.getItem(CLARITY_CACHE_KEY) || '{}');
+    if (cached[cacheKey]) {
+      clarityData = cached[cacheKey].data;
+      renderClarityAll();
+      document.getElementById('clarityUpdated').textContent = 'キャッシュ: ' + cached[cacheKey].at;
+      return;
+    }
+  } catch(e) {}
+
+  document.getElementById('clarityUpdated').textContent = '取得中...';
+
+  try {
+    const url = `https://www.clarity.ms/export-data/api/v1/project-live-insights?projectId=${clarityProject}&startDate=${since}&endDate=${until}&timezone=Asia/Tokyo`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + clarityToken }
+    });
+    if (!res.ok) throw new Error('APIエラー: ' + res.status);
+    const data = await res.json();
+    clarityData = data;
+
+    // キャッシュ保存
+    try {
+      const cached = JSON.parse(localStorage.getItem(CLARITY_CACHE_KEY) || '{}');
+      cached[cacheKey] = { data, at: new Date().toLocaleString('ja-JP') };
+      // 古いキャッシュを削除（5件まで保持）
+      const keys = Object.keys(cached);
+      if (keys.length > 5) delete cached[keys[0]];
+      localStorage.setItem(CLARITY_CACHE_KEY, JSON.stringify(cached));
+    } catch(e) {}
+
+    document.getElementById('clarityUpdated').textContent = '更新: ' + new Date().toLocaleTimeString('ja-JP');
+    hideClarityError();
+    renderClarityAll();
+
+    // セットアップを隠してコントロールを表示
+    document.getElementById('claritySetupPanel').style.display = 'none';
+    ['clarityControls','clarityKpiGrid','clarityChartGrid','clarityInsightSection','clarityAnalysisSection'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = id === 'clarityKpiGrid' || id === 'clarityChartGrid' ? 'grid' : id === 'clarityControls' ? 'flex' : 'block';
+    });
+
+  } catch(e) {
+    showClarityError('データ取得エラー: ' + e.message);
+  }
+}
+
+function renderClarityAll() {
+  if (!clarityData) return;
+  const metrics = {};
+  for (const item of clarityData) {
+    const info = item.information?.[0] || {};
+    metrics[item.metricName] = info;
+  }
+
+  const sessions = parseInt(metrics['DeadClickCount']?.sessionsCount || 0);
+  const deadPct  = metrics['DeadClickCount']?.sessionsWithMetricPercentage || 0;
+  const ragePct  = metrics['RageClickCount']?.sessionsWithMetricPercentage || 0;
+  const quickPct = metrics['QuickbackClick']?.sessionsWithMetricPercentage || 0;
+  const errPct   = metrics['ScriptErrorCount']?.sessionsWithMetricPercentage || 0;
+  const scroll   = metrics['ScrollDepth']?.averageScrollDepth || 0;
+  const excessPct= metrics['ExcessiveScroll']?.sessionsWithMetricPercentage || 0;
+  const errClickPct = metrics['ErrorClickCount']?.sessionsWithMetricPercentage || 0;
+
+  // KPI
+  document.getElementById('cKpiSessions').textContent   = sessions.toLocaleString();
+  document.getElementById('cKpiSessionsSub').textContent = '取得期間の合計';
+  document.getElementById('cKpiDead').textContent       = deadPct.toFixed(2) + '%';
+  document.getElementById('cKpiDead').className         = 'kpi-value ' + (deadPct > 10 ? 'kpi-bad' : deadPct > 5 ? '' : 'kpi-good');
+  document.getElementById('cKpiRage').textContent       = ragePct.toFixed(2) + '%';
+  document.getElementById('cKpiRage').className         = 'kpi-value ' + (ragePct > 2 ? 'kpi-bad' : ragePct > 1 ? '' : 'kpi-good');
+  document.getElementById('cKpiQuick').textContent      = quickPct.toFixed(2) + '%';
+  document.getElementById('cKpiQuick').className        = 'kpi-value ' + (quickPct > 15 ? 'kpi-bad' : quickPct > 8 ? '' : 'kpi-good');
+  document.getElementById('cKpiScroll').textContent     = scroll.toFixed(1) + '%';
+  document.getElementById('cKpiScroll').className       = 'kpi-value ' + (scroll > 60 ? 'kpi-good' : scroll > 40 ? '' : 'kpi-bad');
+  document.getElementById('cKpiScrollSub').textContent  = scroll > 60 ? '✓ 深くスクロール' : scroll > 40 ? '標準的' : '⚠ 離脱が早い';
+  document.getElementById('cKpiError').textContent      = errPct.toFixed(2) + '%';
+  document.getElementById('cKpiError').className        = 'kpi-value ' + (errPct > 10 ? 'kpi-bad' : errPct > 5 ? '' : 'kpi-good');
+
+  // レーダーチャート
+  if (clarityCChart) clarityCChart.destroy();
+  clarityCChart = new Chart(document.getElementById('clarityRadarChart'), {
+    type: 'radar',
+    data: {
+      labels: ['デッドクリック', 'レイジクリック', 'クイックバック', '過剰スクロール', 'エラークリック', 'JSエラー'],
+      datasets: [{
+        label: '発生率(%)',
+        data: [deadPct, ragePct, quickPct, excessPct, errClickPct, errPct],
+        backgroundColor: 'rgba(0,164,239,0.15)',
+        borderColor: '#00a4ef',
+        borderWidth: 2,
+        pointBackgroundColor: '#00a4ef'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#2a2f40' }, pointLabels: { color: '#aaa', font: { size: 11 } } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // ドーナツチャート（クリック品質）
+  const totalPct = deadPct + ragePct + errClickPct;
+  const normalPct = Math.max(0, 100 - totalPct);
+  if (clarityRChart) clarityRChart.destroy();
+  clarityRChart = new Chart(document.getElementById('clarityClickChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['正常クリック', 'デッドクリック', 'レイジクリック', 'エラークリック'],
+      datasets: [{
+        data: [normalPct.toFixed(1), deadPct.toFixed(1), ragePct.toFixed(1), errClickPct.toFixed(1)],
+        backgroundColor: ['rgba(52,208,88,0.8)', 'rgba(248,113,113,0.8)', 'rgba(245,158,11,0.8)', 'rgba(156,163,175,0.8)'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#aaa', font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + '%' } }
+      }
+    }
+  });
+
+  // UXスコアゲージ（横棒）
+  const uxScore = Math.max(0, Math.min(100, 100 - (deadPct * 2 + ragePct * 5 + quickPct * 1 + errPct * 1) + (scroll - 50) * 0.3));
+  if (claritySChart) claritySChart.destroy();
+  claritySChart = new Chart(document.getElementById('clarityScoreChart'), {
+    type: 'bar',
+    data: {
+      labels: ['UXスコア'],
+      datasets: [
+        { label: 'スコア', data: [uxScore.toFixed(1)], backgroundColor: uxScore >= 70 ? 'rgba(52,208,88,0.8)' : uxScore >= 50 ? 'rgba(245,158,11,0.8)' : 'rgba(248,113,113,0.8)', borderRadius: 6 },
+        { label: '最大値', data: [100 - uxScore], backgroundColor: 'rgba(42,47,64,0.5)', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      scales: {
+        x: { stacked: true, max: 100, ticks: { color: '#666' }, grid: { color: '#1a1f2e' } },
+        y: { stacked: true, ticks: { color: '#888' }, grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? 'UXスコア: ' + ctx.parsed.x + ' / 100' : '' } }
+      }
+    }
+  });
+
+  // 詳細テーブル
+  const rows = [
+    { label: 'デッドクリック', pct: deadPct,  total: metrics['DeadClickCount']?.subTotal || 0,  desc: 'クリックしても反応しない箇所', threshold: 5 },
+    { label: 'レイジクリック', pct: ragePct,   total: metrics['RageClickCount']?.subTotal || 0,   desc: '短時間に連打したクリック',     threshold: 1 },
+    { label: 'クイックバック', pct: quickPct,  total: metrics['QuickbackClick']?.subTotal || 0,  desc: 'ページを開いてすぐ戻った',     threshold: 10 },
+    { label: '過剰スクロール', pct: excessPct, total: metrics['ExcessiveScroll']?.subTotal || 0, desc: '急激な上下スクロール',         threshold: 1 },
+    { label: 'エラークリック', pct: errClickPct,total: metrics['ErrorClickCount']?.subTotal || 0, desc: 'エラー付近のクリック',         threshold: 2 },
+    { label: 'JSエラー',       pct: errPct,    total: metrics['ScriptErrorCount']?.subTotal || 0, desc: 'スクリプトエラー発生',         threshold: 5 },
+  ];
+
+  let html = `<table><thead><tr>
+    <th style="text-align:left">指標</th><th>発生率</th><th>件数</th><th>評価</th><th style="text-align:left">説明</th>
+  </tr></thead><tbody>`;
+  for (const r of rows) {
+    const isGood = r.pct <= r.threshold;
+    const cls = isGood ? 'roas-high' : r.pct <= r.threshold * 2 ? 'roas-mid' : 'roas-low';
+    const badge = isGood ? '✅ 良好' : r.pct <= r.threshold * 2 ? '⚠️ 注意' : '🔴 要改善';
+    html += `<tr>
+      <td style="font-weight:500;color:#e8e8e8;text-align:left">${r.label}</td>
+      <td class="${cls}">${r.pct.toFixed(2)}%</td>
+      <td>${parseInt(r.total).toLocaleString()}</td>
+      <td>${badge}</td>
+      <td style="color:#888;text-align:left;font-size:12px">${r.desc}</td>
+    </tr>`;
+  }
+  html += `<tr><td style="font-weight:500;color:#e8e8e8;text-align:left">平均スクロール深度</td>
+    <td class="${scroll > 60 ? 'roas-high' : scroll > 40 ? 'roas-mid' : 'roas-low'}">${scroll.toFixed(1)}%</td>
+    <td>—</td><td>${scroll > 60 ? '✅ 良好' : scroll > 40 ? '⚠️ 注意' : '🔴 要改善'}</td>
+    <td style="color:#888;text-align:left;font-size:12px">平均どこまでスクロールされたか</td></tr>`;
+  html += '</tbody></table>';
+  document.getElementById('clarityInsightContent').innerHTML = html;
+}
+
+async function runClarityAnalysis() {
+  if (!clarityData) return;
+  const metrics = {};
+  for (const item of clarityData) metrics[item.metricName] = item.information?.[0] || {};
+  const sessions  = metrics['DeadClickCount']?.sessionsCount || 0;
+  const deadPct   = metrics['DeadClickCount']?.sessionsWithMetricPercentage || 0;
+  const ragePct   = metrics['RageClickCount']?.sessionsWithMetricPercentage || 0;
+  const quickPct  = metrics['QuickbackClick']?.sessionsWithMetricPercentage || 0;
+  const scroll    = metrics['ScrollDepth']?.averageScrollDepth || 0;
+  const errPct    = metrics['ScriptErrorCount']?.sessionsWithMetricPercentage || 0;
+
+  const prompt = `以下はMicrosoft Clarityから取得したサイトのUX指標データです（サイト：シロカオンラインストア）。
+
+セッション数: ${parseInt(sessions).toLocaleString()}
+デッドクリック率: ${deadPct}%（クリックしても反応しない箇所）
+レイジクリック率: ${ragePct}%（連打クリック）
+クイックバック率: ${quickPct}%（ページを開いてすぐ戻った）
+平均スクロール深度: ${scroll}%
+JSエラー発生率: ${errPct}%
+
+このデータを分析して以下の観点で日本語で回答してください：
+1. 全体的なUX評価（業界平均との比較含む）
+2. 最も改善が必要な指標とその原因仮説
+3. デッドクリック・レイジクリックが多い場合の具体的な改善策
+4. スクロール深度から読み取れるコンテンツの問題点
+5. 今後2週間の優先改善アクション
+
+ECサイトの観点から具体的に分かりやすくまとめてください。`;
+
+  if (typeof sendPrompt === 'function') {
+    sendPrompt(prompt);
+    document.getElementById('clarityAnalysisContent').textContent = '↑ チャットにデータを送りました。上のClaudeの返答をご確認ください。';
+  } else {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      document.getElementById('clarityAnalysisContent').textContent = '✓ クリップボードにコピーしました。Claudeに貼り付けてください。';
+    } catch(e) {
+      document.getElementById('clarityAnalysisContent').textContent = prompt;
+    }
+  }
+}
+
+function showClarityError(msg) {
+  const el = document.getElementById('clarityError');
+  el.textContent = '⚠ ' + msg; el.style.display = 'block';
+}
+function hideClarityError() {
+  document.getElementById('clarityError').style.display = 'none';
+}
+// ============ Clarity機能ここまで ============
+
 // ============ キャンペーン比較機能 ============
 const COMPARE_COLORS = ['#0082fb','#34d058','#f59e0b','#f87171','#a78bfa','#38bdf8','#fb923c','#4ade80'];
 let compareRowCount = 0;
@@ -1369,6 +2671,62 @@ function formatDate(daysAgo) {
 }
 function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
 function hideError() { document.getElementById('errorMsg').style.display = 'none'; }
+
+// GA4
+let ga4ChartInstance = null;
+let ga4Loaded = false;
+
+async function loadGa4Data() {
+  if (ga4Loaded) return;
+  const statusEl = document.getElementById('ga4Status');
+  statusEl.textContent = '⏳ データを取得中...';
+  statusEl.style.display = 'block';
+  try {
+    const res = await fetch('/.netlify/functions/ga4-data');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const rows = data.rows || [];
+    let totalSessions = 0, totalUsers = 0, totalPV = 0, totalBounce = 0;
+    const dates = [], sessions = [];
+    rows.sort((a, b) => a.dimensionValues[0].value.localeCompare(b.dimensionValues[0].value));
+    rows.forEach(row => {
+      const s = parseInt(row.metricValues[0].value) || 0;
+      const u = parseInt(row.metricValues[1].value) || 0;
+      const pv = parseInt(row.metricValues[2].value) || 0;
+      const br = parseFloat(row.metricValues[3].value) || 0;
+      totalSessions += s; totalUsers += u; totalPV += pv; totalBounce += br;
+      const d = row.dimensionValues[0].value;
+      dates.push(d.slice(4,6) + '/' + d.slice(6,8));
+      sessions.push(s);
+    });
+    const avgBounce = rows.length ? (totalBounce / rows.length * 100).toFixed(1) : 0;
+    document.getElementById('ga4Sessions').textContent = totalSessions.toLocaleString();
+    document.getElementById('ga4Users').textContent = totalUsers.toLocaleString();
+    document.getElementById('ga4Pageviews').textContent = totalPV.toLocaleString();
+    document.getElementById('ga4BounceRate').textContent = avgBounce + '%';
+    const ctx = document.getElementById('ga4Chart').getContext('2d');
+    if (ga4ChartInstance) ga4ChartInstance.destroy();
+    ga4ChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: dates,
+        datasets: [{ label: 'セッション数', data: sessions, borderColor: '#e37400', backgroundColor: 'rgba(227,116,0,0.1)', borderWidth: 2, pointRadius: 2, fill: true, tension: 0.3 }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#888' } } },
+        scales: {
+          x: { ticks: { color: '#666', maxTicksLimit: 10 }, grid: { color: '#1e2130' } },
+          y: { ticks: { color: '#666' }, grid: { color: '#1e2130' } }
+        }
+      }
+    });
+    statusEl.style.display = 'none';
+    ga4Loaded = true;
+  } catch(e) {
+    statusEl.textContent = '⚠️ エラー: ' + e.message;
+  }
+}
 </script>
 </body>
 </html>
