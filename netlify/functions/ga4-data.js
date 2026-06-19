@@ -19,7 +19,7 @@ exports.handler = async (event) => {
     const params = event.queryStringParameters || {};
     const type = params.type || 'overview';
     const landingPage = params.landingPage || null;
-    const medium = params.medium || null; // 'cpc' = 有料, 'organic' = オーガニック, null = 全体
+    const medium = params.medium || null;
 
     // 共通フィルター構築
     const buildFilters = () => {
@@ -32,7 +32,17 @@ exports.handler = async (event) => {
           }
         });
       }
-      if (medium) {
+      // 有料トラフィック全体（GA4の「有料のトラフィック」セグメントと同定義）
+      if (medium === 'paid_all') {
+        filters.push({
+          filter: {
+            fieldName: 'sessionMedium',
+            inListFilter: {
+              values: ['cpc', 'paidsocial', 'paid', 'ppc', 'paid_social', 'paid-social', 'display', 'cpv', 'cpm']
+            }
+          }
+        });
+      } else if (medium) {
         filters.push({
           filter: {
             fieldName: 'sessionMedium',
