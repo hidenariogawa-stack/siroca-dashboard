@@ -74,21 +74,47 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify(response) };
     }
 
-    // ファネルデータ
+    // ファネルデータ（セッション・カート追加・purchase イベント数を別々に取得）
     if (type === 'funnel') {
-      const [response] = await analyticsDataClient.runReport({
+      // セッション＆カート追加
+      const [overviewRes] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
         dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
-        metrics: [
-          { name: 'sessions' },
-          { name: 'addToCarts' },
-          { name: 'ecommercePurchases' },
-          { name: 'totalUsers' },
-        ],
+        metrics: [{ name: 'sessions' }, { name: 'addToCarts' }],
         dimensions: [{ name: 'date' }],
         ...(dimensionFilter && { dimensionFilter }),
       });
-      return { statusCode: 200, headers, body: JSON.stringify(response) };
+
+      // purchaseイベント数（eventNameフィルター + 既存フィルターをAND結合）
+      const purchaseEventFilter = {
+        filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'purchase' } }
+      };
+      const combinedFilter = dimensionFilter
+        ? { andGroup: { expressions: [purchaseEventFilter, ...(dimensionFilter.andGroup?.expressions || [{ filter: dimensionFilter.filter }])] } }
+        : purchaseEventFilter;
+
+      const [purchaseRes] = await analyticsDataClient.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensions: [{ name: 'date' }],
+        dimensionFilter: combinedFilter,
+      });
+
+      // 集計してマージ
+      let sessions = 0, carts = 0, purchases = 0;
+      (overviewRes.rows || []).forEach(row => {
+        sessions += parseInt(row.metricValues[0].value) || 0;
+        carts += parseInt(row.metricValues[1].value) || 0;
+      });
+      (purchaseRes.rows || []).forEach(row => {
+        purchases += parseInt(row.metricValues[0].value) || 0;
+      });
+
+      return {
+        statusCode: 200, headers,
+        body: JSON.stringify({ rows: [{ metricValues: [{ value: String(sessions) }, { value: String(carts) }, { value: String(purchases) }] }] })
+      };
     }
 
     // イベント別コンバージョン
@@ -167,6 +193,76 @@ exports.handler = async (event) => {
         ...(dimensionFilter && { dimensionFilter }),
       });
       return { statusCode: 200, headers, body: JSON.stringify(response) };
+    }
+
+    // ブランドサイト→本店遷移率
+    if (type === 'transition') {
+      // 遷移イベント数（オンラインストアへ遷移）
+      const transitionEventFilter = {
+        filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'オンラインストアへ遷移' } }
+      };
+      const combinedFilter = dimensionFilter
+        ? { andGroup: { expressions: [transitionEventFilter, ...(dimensionFilter.andGroup?.expressions || [{ filter: dimensionFilter.filter }])] } }
+        : transitionEventFilter;
+
+      // セッション数（全体）
+      const [sessionRes] = await analyticsDataClient.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
+        metrics: [{ name: 'sessions' }],
+        dimensions: [{ name: 'date' }],
+        ...(dimensionFilter && { dimensionFilter }),
+      });
+
+      // 遷移イベント数（日別）
+      const [transitionRes] = await analyticsDataClient.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensions: [{ name: 'date' }],
+        dimensionFilter: combinedFilter,
+      });
+
+      // LP別遷移数
+      const [lpTransitionRes] = await analyticsDataClient.runReport({
+        property: `properties/${propertyId}`,
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
+        metrics: [{ name: 'eventCount' }, { name: 'sessions' }],
+        dimensions: [{ name: 'landingPage' }],
+        dimensionFilter: combinedFilter,
+        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+        limit: 20,
+      });
+
+      // 集計
+      let totalSessions = 0, totalTransitions = 0;
+      (sessionRes.rows || []).forEach(r => { totalSessions += parseInt(r.metricValues[0].value) || 0; });
+      (transitionRes.rows || []).forEach(r => { totalTransitions += parseInt(r.metricValues[0].value) || 0; });
+
+      // 日別データ（グラフ用）
+      const dailyMap = {};
+      (sessionRes.rows || []).forEach(r => {
+        const d = r.dimensionValues[0].value;
+        if (!dailyMap[d]) dailyMap[d] = { sessions: 0, transitions: 0 };
+        dailyMap[d].sessions += parseInt(r.metricValues[0].value) || 0;
+      });
+      (transitionRes.rows || []).forEach(r => {
+        const d = r.dimensionValues[0].value;
+        if (!dailyMap[d]) dailyMap[d] = { sessions: 0, transitions: 0 };
+        dailyMap[d].transitions += parseInt(r.metricValues[0].value) || 0;
+      });
+      const daily = Object.entries(dailyMap).sort(([a],[b]) => a.localeCompare(b)).map(([date, v]) => ({ date, ...v }));
+
+      return {
+        statusCode: 200, headers,
+        body: JSON.stringify({
+          totalSessions,
+          totalTransitions,
+          transitionRate: totalSessions ? (totalTransitions / totalSessions * 100).toFixed(1) : 0,
+          daily,
+          lpBreakdown: lpTransitionRes.rows || [],
+        })
+      };
     }
 
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid type' }) };
