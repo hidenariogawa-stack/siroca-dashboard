@@ -2884,7 +2884,7 @@ function clearLpFilter() {
 // 概要
 async function loadGa4Overview() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=overview' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=overview' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const rows = data.rows || [];
@@ -2919,7 +2919,7 @@ async function loadGa4Overview() {
 // ファネル
 async function loadGa4Funnel() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=funnel' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=funnel' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const row = (data.rows || [])[0];
@@ -2965,7 +2965,7 @@ async function loadGa4Funnel() {
 // イベント別CV
 async function loadGa4Events() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=events' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=events' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const rows = data.rows || [];
@@ -2991,7 +2991,7 @@ async function loadGa4Events() {
 // 流入元別
 async function loadGa4Sources() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=sources' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=sources' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const rows = data.rows || [];
@@ -3029,7 +3029,7 @@ let ga4UserTypeChartInstance = null;
 
 async function loadGa4Devices() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=devices' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=devices' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const rows = data.rows || [];
@@ -3069,7 +3069,7 @@ async function loadGa4Devices() {
 // 時間帯別
 async function loadGa4Hourly() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=hourly' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=hourly' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const rows = data.rows || [];
@@ -3105,7 +3105,7 @@ async function loadGa4Hourly() {
 // 新規vs既存・検索・スクロール
 async function loadGa4Behavior() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=behavior' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=behavior' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
@@ -3193,7 +3193,7 @@ async function loadGa4Behavior() {
 // LPテーブル
 async function loadGa4LandingPages() {
   try {
-    const res = await fetch('/.netlify/functions/ga4-data?type=landing_pages' + getGa4Filters());
+    const res = await fetch('/api/ga4-data?type=landing_pages' + getGa4Filters());
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const rows = data.rows || [];
