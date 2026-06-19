@@ -197,7 +197,6 @@ exports.handler = async (event) => {
 
     // ブランドサイト→本店遷移率
     if (type === 'transition') {
-      // 遷移イベント数（オンラインストアへ遷移）
       const transitionEventFilter = {
         filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'オンラインストアへ遷移' } }
       };
@@ -214,23 +213,23 @@ exports.handler = async (event) => {
         ...(dimensionFilter && { dimensionFilter }),
       });
 
-      // 遷移イベント数（日別）
+      // 遷移したユニークセッション数（sessionsメトリクスで1セッション1カウント）
       const [transitionRes] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
         dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
-        metrics: [{ name: 'eventCount' }],
+        metrics: [{ name: 'sessions' }],
         dimensions: [{ name: 'date' }],
         dimensionFilter: combinedFilter,
       });
 
-      // LP別遷移数
+      // LP別遷移セッション数
       const [lpTransitionRes] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
         dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
-        metrics: [{ name: 'eventCount' }, { name: 'sessions' }],
+        metrics: [{ name: 'sessions' }],
         dimensions: [{ name: 'landingPage' }],
         dimensionFilter: combinedFilter,
-        orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
         limit: 20,
       });
 
