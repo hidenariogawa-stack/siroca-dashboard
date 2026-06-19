@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta広告 日次実績ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #0f1117; color: #e8e8e8; min-height: 100vh; }
+
+  .header { padding: 20px 28px; border-bottom: 1px solid #1e2130; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .meta-logo { width: 32px; height: 32px; background: linear-gradient(135deg, #0082fb, #0052d4); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 14px; }
+  .header h1 { font-size: 16px; font-weight: 600; color: #fff; }
+  .header-sub { font-size: 12px; color: #666; margin-top: 2px; }
+  .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .status-badge.connected { background: #0d2a1a; color: #34d058; border: 1px solid #1a4a2a; }
+  .status-badge.disconnected { background: #2a1010; color: #f87171; border: 1px solid #4a1a1a; }
+
+  .setup-panel { margin: 24px 28px; background: #161b27; border: 1px solid #1e2130; border-radius: 12px; padding: 24px; }
+  .setup-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .setup-desc { font-size: 12px; color: #888; margin-bottom: 16px; line-height: 1.6; }
+  .token-input-row { display: flex; gap: 10px; }
+  .token-input { flex: 1; background: #0f1117; border: 1px solid #2a2f40; border-radius: 8px; padding: 10px 14px; color: #e8e8e8; font-size: 13px; font-family: monospace; outline: none; transition: border-color .2s; }
+  .token-input:focus { border-color: #0082fb; }
+  .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: all .2s; }
+  .btn-primary { background: #0082fb; color: #fff; }
+  .btn-primary:hover { background: #0070e0; }
+  .btn-primary:disabled { background: #1e2130; color: #555; cursor: not-allowed; }
+  .btn-secondary { background: #1e2130; color: #aaa; border: 1px solid #2a2f40; }
+  .btn-secondary:hover { background: #252b3d; color: #fff; }
+
+  /* Controls */
+  .controls { margin: 0 28px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ctrl-label { font-size: 12px; color: #888; white-space: nowrap; }
+  .date-select { background: #161b27; border: 1px solid #2a2f40; border-radius: 8px; padding: 8px 12px; color: #e8e8e8; font-size: 13px; cursor: pointer; outline: none; }
+  .date-select:focus { border-color: #0082fb; }
+  .search-input { background: #161b27; border: 1px solid #2a2f40; border-radius: 8px; padding: 8px 12px; color: #e8e8e8; font-size: 13px; outline: none; width: 200px; }
+  .search-input:focus { border-color: #0082fb; }
+  .search-input::placeholder { color: #555; }
+  .status-filter-group { display: flex; gap: 6px; }
+  .status-filter-btn { padding: 6px 12px; border-radius: 20px; border: 1.5px solid #2a2f40; background: transparent; color: #888; font-size: 12px; cursor: pointer; transition: all .15s; }
+  .status-filter-btn.active-all  { border-color: #0082fb; background: #0d1e3a; color: #0082fb; }
+  .status-filter-btn.active-on   { border-color: #34d058; background: #0d2a1a; color: #34d058; }
+  .status-filter-btn.active-off  { border-color: #f59e0b; background: #2a1e00; color: #f59e0b; }
+  .filter-count { font-size: 11px; color: #555; white-space: nowrap; }
+
+  /* KPI Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 14px; margin: 0 28px 24px; }
+  .kpi-card { background: #161b27; border: 1px solid #1e2130; border-radius: 12px; padding: 16px 18px; }
+  .kpi-label { font-size: 11px; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: #fff; }
+  .kpi-sub { font-size: 11px; color: #888; margin-top: 4px; }
+  .kpi-good { color: #34d058; }
+  .kpi-bad { color: #f87171; }
+
+  /* Charts */
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0 28px 24px; }
+  .chart-card { background: #161b27; border: 1px solid #1e2130; border-radius: 12px; padding: 18px; }
+  .chart-title { font-size: 13px; font-weight: 600; color: #ccc; margin-bottom: 14px; }
+  .chart-canvas-wrap { position: relative; height: 220px; }
+
+  /* Table */
+  .table-section { margin: 0 28px 28px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .table-wrap { background: #161b27; border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: #0f1117; padding: 11px 14px; text-align: left; font-size: 11px; color: #666; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #1e2130; cursor: pointer; user-select: none; white-space: nowrap; }
+  thead th:hover { color: #aaa; }
+  .sort-arrow { margin-left: 4px; opacity: .4; }
+  .sort-arrow.active { opacity: 1; color: #0082fb; }
+  tbody tr { border-bottom: 1px solid #1a1f2e; transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #1a1f2e; }
+  tbody td { padding: 11px 14px; color: #ccc; }
+  .campaign-name { color: #e8e8e8; font-weight: 500; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+  .status-dot.active { background: #34d058; }
+  .status-dot.paused { background: #f59e0b; }
+  .roas-high { color: #34d058; font-weight: 600; }
+  .roas-mid { color: #f59e0b; font-weight: 600; }
+  .roas-low { color: #f87171; font-weight: 600; }
+
+  /* AI Analysis */
+  .analysis-section { margin: 0 28px 28px; }
+  .analysis-box { background: #161b27; border: 1px solid #1e2130; border-radius: 12px; padding: 20px; }
+  .analysis-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .ai-icon { width: 28px; height: 28px; background: linear-gradient(135deg, #7c3aed, #4f46e5); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .analysis-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .analysis-content { font-size: 13px; color: #aaa; line-height: 1.8; white-space: pre-wrap; }
+  .btn-analyze { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity .2s; }
+  .btn-analyze:hover { opacity: .85; }
+  .btn-analyze:disabled { opacity: .4; cursor: not-allowed; }
+
+  .loading { text-align: center; padding: 40px; color: #555; font-size: 13px; }
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid #2a2f40; border-top-color: #0082fb; border-radius: 50%; animation: spin .7s linear infinite; margin-bottom: 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 48px; color: #555; }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; color: #555; }
+  .error-msg { background: #2a1010; border: 1px solid #4a1a1a; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #f87171; margin: 0 28px 20px; }
+
+  /* Compare Table */
+  .cmp-table-wrap { overflow-x: auto; margin-top: 16px; }
+  .cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cmp-table thead th { background: #0f1117; padding: 10px 14px; text-align: right; font-size: 11px; color: #666; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #1e2130; white-space: nowrap; }
+  .cmp-table thead th:first-child { text-align: left; }
+  .cmp-table tbody tr { border-bottom: 1px solid #1a1f2e; transition: background .15s; }
+  .cmp-table tbody tr:last-child { border-bottom: none; }
+  .cmp-table tbody tr:hover { background: #1a1f2e; }
+  .cmp-table tbody td { padding: 11px 14px; color: #ccc; text-align: right; white-space: nowrap; }
+  .cmp-table tbody td:first-child { text-align: left; }
+  .cmp-metric-label { font-size: 11px; color: #666; font-weight: 500; text-transform: uppercase; letter-spacing: .4px; background: #0a0d14 !important; }
+  .cmp-metric-label td { color: #555 !important; font-size: 11px; padding: 6px 14px !important; }
+  .cmp-camp-name { display: flex; align-items: center; gap: 8px; font-weight: 500; color: #e8e8e8; }
+  .cmp-period { font-size: 11px; color: #555; margin-top: 2px; }
+  .cmp-best { color: #34d058 !important; font-weight: 600; }
+  .cmp-worst { color: #f87171 !important; }
+  .cmp-tab-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .cmp-tab { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #2a2f40; background: transparent; color: #888; font-size: 12px; cursor: pointer; transition: all .15s; }
+  .cmp-tab.active { border-color: #0082fb; background: #0d1e3a; color: #0082fb; }
+
+  /* Compare Section */
+  .compare-section { margin: 0 28px 28px; }
+  .compare-box { background: #161b27; border: 1px solid #1e2130; border-radius: 12px; padding: 20px; }
+  .compare-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .compare-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .btn-add-compare { background: #1e2130; border: 1.5px dashed #2a2f40; color: #888; padding: 8px 16px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: all .2s; }
+  .btn-add-compare:hover { border-color: #0082fb; color: #0082fb; background: #0d1e3a; }
+  .compare-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .compare-row { display: flex; align-items: center; gap: 10px; background: #0f1117; border: 1px solid #2a2f40; border-radius: 10px; padding: 10px 14px; flex-wrap: wrap; }
+  .compare-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .compare-select { background: #161b27; border: 1px solid #2a2f40; border-radius: 8px; padding: 7px 10px; color: #e8e8e8; font-size: 12px; outline: none; flex: 1; min-width: 180px; }
+  .compare-select:focus { border-color: #0082fb; }
+  .compare-date { background: #161b27; border: 1px solid #2a2f40; border-radius: 8px; padding: 7px 10px; color: #e8e8e8; font-size: 12px; outline: none; }
+  .compare-date:focus { border-color: #0082fb; }
+  .compare-sep { color: #555; font-size: 12px; }
+  .btn-remove-row { background: none; border: none; color: #555; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color .15s; flex-shrink: 0; }
+  .btn-remove-row:hover { color: #f87171; }
+  .compare-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 16px; }
+  .compare-chart-card { background: #0f1117; border: 1px solid #1e2130; border-radius: 10px; padding: 14px; }
+  .compare-chart-title { font-size: 12px; color: #888; margin-bottom: 10px; font-weight: 500; }
+  .compare-chart-wrap { position: relative; height: 200px; }
+  .compare-empty { text-align: center; padding: 32px; color: #555; font-size: 13px; }
+  .compare-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .compare-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #aaa; }
+  .compare-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  @media (max-width: 700px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .controls { gap: 8px; }
+    .search-input { width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="meta-logo">M</div>
+    <div>
+      <h1>Meta広告 日次実績ダッシュボード</h1>
+      <div class="header-sub">Campaign Performance Analytics</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="status-badge disconnected" id="statusBadge">未接続</span>
+    <button id="clearTokenBtn" onclick="clearSavedToken()" style="display:none;background:none;border:1px solid #2a2f40;color:#666;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer" title="保存済みトークンを削除して再接続">🔑 トークンを変更</button>
+  </div>
+</div>
+
+<div class="setup-panel" id="setupPanel">
+  <div class="setup-title">アクセストークンを入力してください</div>
+  <div class="setup-desc">Graph APIエクスプローラーで取得したアクセストークンを入力してください。<br>トークンはこのブラウザ上でのみ使用され、外部に送信されません。</div>
+  <div class="token-input-row">
+    <input type="password" class="token-input" id="tokenInput" placeholder="EAAxxxxxxxxxxxx..." />
+    <button class="btn btn-primary" id="connectBtn" onclick="connectAPI()">接続する</button>
+  </div>
+  <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#888;cursor:pointer">
+      <input type="checkbox" id="saveTokenCheck" style="accent-color:#0082fb" checked />
+      このブラウザにトークンを保存する（次回から自動接続）
+    </label>
+  </div>
+</div>
+
+<div id="errorMsg" class="error-msg" style="display:none"></div>
+
+<!-- Controls -->
+<div class="controls" id="controls" style="display:none">
+  <span class="ctrl-label">期間：</span>
+  <select class="date-select" id="dateRange" onchange="onDateRangeChange()">
+    <option value="today">今日</option>
+    <option value="yesterday">昨日</option>
+    <option value="7" selected>過去7日間</option>
+    <option value="14">過去14日間</option>
+    <option value="30">過去30日間</option>
+    <option value="90">過去90日間</option>
+    <option value="custom">カスタム ▾</option>
+  </select>
+  <div id="customDateWrap" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+    <div style="position:relative">
+      <input type="date" class="date-select" id="customSince" style="padding:7px 10px;font-size:12px" onchange="onCustomDateChange()" />
+    </div>
+    <span style="color:#555;font-size:12px">〜</span>
+    <div style="position:relative">
+      <input type="date" class="date-select" id="customUntil" style="padding:7px 10px;font-size:12px" onchange="onCustomDateChange()" />
+    </div>
+    <button class="btn btn-primary" style="padding:7px 14px;font-size:12px" id="applyCustomBtn" onclick="loadData()">適用</button>
+    <span id="customDateHint" style="font-size:11px;color:#555"></span>
+  </div>
+
+  <span class="ctrl-label" style="margin-left:8px">ステータス：</span>
+  <div class="status-filter-group">
+    <button class="status-filter-btn active-all" id="sf-all"  onclick="setStatusFilter('all')">すべて</button>
+    <button class="status-filter-btn" id="sf-on"   onclick="setStatusFilter('ACTIVE')">● アクティブ</button>
+    <button class="status-filter-btn" id="sf-off"  onclick="setStatusFilter('PAUSED')">● 停止中</button>
+  </div>
+
+  <span class="ctrl-label" style="margin-left:8px">絞り込み：</span>
+  <input class="search-input" id="searchInput" placeholder="キャンペーン名で検索..." oninput="applyFilters()" />
+
+  <span class="filter-count" id="filterCount"></span>
+
+  <button class="btn btn-secondary" onclick="loadData()">🔄 更新</button>
+  <button class="btn btn-secondary" onclick="exportCSV()">📥 CSV</button>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid" id="kpiGrid" style="display:none">
+  <div class="kpi-card">
+    <div class="kpi-label">総消化金額</div>
+    <div class="kpi-value" id="kpiSpend">—</div>
+    <div class="kpi-sub" id="kpiSpendSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">総購入件数</div>
+    <div class="kpi-value" id="kpiPurchases">—</div>
+    <div class="kpi-sub" id="kpiPurchasesSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">総売上金額</div>
+    <div class="kpi-value" id="kpiSales">—</div>
+    <div class="kpi-sub" id="kpiSalesSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">全体ROAS</div>
+    <div class="kpi-value" id="kpiRoas">—</div>
+    <div class="kpi-sub" id="kpiRoasSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">総クリック数</div>
+    <div class="kpi-value" id="kpiClicks">—</div>
+    <div class="kpi-sub" id="kpiClicksSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">平均CTR</div>
+    <div class="kpi-value" id="kpiCtr">—</div>
+    <div class="kpi-sub" id="kpiCtrSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">平均CPC</div>
+    <div class="kpi-value" id="kpiCpc">—</div>
+    <div class="kpi-sub" id="kpiCpcSub"></div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="chart-grid" id="chartGrid" style="display:none">
+  <div class="chart-card">
+    <div class="chart-title">売上 TOP10（キャンペーン別）</div>
+    <div class="chart-canvas-wrap"><canvas id="revenueChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">購入件数 TOP10（キャンペーン別）</div>
+    <div class="chart-canvas-wrap"><canvas id="purchasesChart"></canvas></div>
+  </div>
+</div>
+<div class="chart-grid" id="chartGridDaily" style="display:none">
+  <div class="chart-card">
+    <div class="chart-title">売上金額 推移（日別）</div>
+    <div class="chart-canvas-wrap"><canvas id="dailyRevenueChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">購入件数 推移（日別）</div>
+    <div class="chart-canvas-wrap"><canvas id="dailyPurchasesChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">クリック数 推移（日別）</div>
+    <div class="chart-canvas-wrap"><canvas id="dailyClicksChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Campaign Table -->
+<div class="table-section" id="tableSection" style="display:none">
+  <div class="section-header">
+    <div class="section-title">キャンペーン別実績</div>
+    <div style="font-size:12px;color:#555" id="tableUpdated"></div>
+  </div>
+  <div class="table-wrap">
+    <div id="tableContent">
+      <div class="loading"><div class="spinner"></div><br>データを取得中...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Campaign Compare -->
+<div class="compare-section" id="compareSection" style="display:none">
+  <div class="compare-box">
+    <div class="compare-header">
+      <div style="font-size:18px">⚖️</div>
+      <div class="compare-title">キャンペーン比較</div>
+      <button class="btn-analyze" id="runCompareBtn" onclick="runCompare()" style="margin-left:auto;padding:8px 16px;font-size:12px">比較を実行</button>
+    </div>
+    <div class="compare-rows" id="compareRows"></div>
+    <button class="btn-add-compare" onclick="addCompareRow()">＋ キャンペーンを追加</button>
+    <div id="compareLegend" class="compare-legend" style="margin-top:14px"></div>
+
+    <!-- タブ切り替え -->
+    <div class="cmp-tab-row" id="cmpTabRow" style="display:none">
+      <button class="cmp-tab active" id="tabTable" onclick="switchCmpTab('table')">📊 数値テーブル</button>
+      <button class="cmp-tab" id="tabChart" onclick="switchCmpTab('chart')">📈 グラフ</button>
+    </div>
+
+    <!-- 数値テーブル -->
+    <div id="compareTable" style="display:none">
+      <div class="cmp-table-wrap"><div id="cmpTableContent"></div></div>
+    </div>
+
+    <div class="compare-charts" id="compareCharts" style="display:none">
+      <div class="compare-chart-card">
+        <div class="compare-chart-title">消化金額 推移</div>
+        <div class="compare-chart-wrap"><canvas id="cmpSpendChart"></canvas></div>
+      </div>
+      <div class="compare-chart-card">
+        <div class="compare-chart-title">売上金額 推移</div>
+        <div class="compare-chart-wrap"><canvas id="cmpRevenueChart"></canvas></div>
+      </div>
+      <div class="compare-chart-card">
+        <div class="compare-chart-title">購入件数 推移</div>
+        <div class="compare-chart-wrap"><canvas id="cmpPurchasesChart"></canvas></div>
+      </div>
+      <div class="compare-chart-card">
+        <div class="compare-chart-title">クリック数 推移</div>
+        <div class="compare-chart-wrap"><canvas id="cmpClicksChart"></canvas></div>
+      </div>
+      <div class="compare-chart-card">
+        <div class="compare-chart-title">インプレッション 推移</div>
+        <div class="compare-chart-wrap"><canvas id="cmpImpChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI Analysis -->
+<div class="analysis-section" id="analysisSection" style="display:none">
+  <div class="analysis-box">
+    <div class="analysis-header">
+      <div class="ai-icon">✦</div>
+      <div class="analysis-title">AI分析レポート</div>
+      <button class="btn-analyze" id="analyzeBtn" onclick="runAnalysis()" style="margin-left:auto">分析を実行</button>
+    </div>
+    <div class="analysis-content" id="analysisContent" style="color:#555">「分析を実行」を押すと、キャンペーンデータをもとにAIが改善提案を生成します。</div>
+  </div>
+</div>
+
+<script>
+let accessToken = '';
+let accountId = '';
+const TOKEN_KEY = 'meta_ads_token_v1';
+
+// ページ読み込み時に自動接続を試みる
+window.addEventListener('DOMContentLoaded', async () => {
+  // ① URLパラメーターを優先チェック
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlToken = urlParams.get('token');
+  if (urlToken) {
+    document.getElementById('tokenInput').value = urlToken;
+    // URLトークンはlocalStorageにも保存して以降はパラメーター不要に
+    localStorage.setItem(TOKEN_KEY, urlToken);
+    await connectAPI();
+    return;
+  }
+
+  // ② localStorageのトークンをチェック
+  const savedToken = localStorage.getItem(TOKEN_KEY);
+  if (savedToken) {
+    document.getElementById('tokenInput').value = savedToken;
+    document.getElementById('saveTokenCheck').checked = true;
+    // 自動接続バナーを表示してから接続
+    const panel = document.getElementById('setupPanel');
+    panel.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="spinner" style="margin:0"></div>
+        <div>
+          <div style="font-size:13px;font-weight:500;color:#fff">保存済みトークンで自動接続中...</div>
+          <div style="font-size:11px;color:#666;margin-top:2px">接続できない場合は「🔑 トークンを変更」から再設定できます</div>
+        </div>
+      </div>`;
+    panel.style.display = 'block';
+    try {
+      await connectAPI(savedToken);
+    } catch(e) {
+      // 自動接続失敗時はパネルをリセット
+      resetSetupPanel();
+    }
+  }
+});
+
+function resetSetupPanel() {
+  document.getElementById('setupPanel').innerHTML = `
+    <div class="setup-title">アクセストークンを入力してください</div>
+    <div class="setup-desc">
+      保存済みトークンでの自動接続に失敗しました。<br>
+      <strong style="color:#f59e0b">トークンが期限切れ（60日）の可能性があります。</strong><br>
+      <a href="https://developers.facebook.com/tools/explorer" target="_blank" style="color:#0082fb">Graph APIエクスプローラー</a>で新しいトークンを取得して入力してください。
+    </div>
+    <div class="token-input-row">
+      <input type="password" class="token-input" id="tokenInput" placeholder="EAAxxxxxxxxxxxx..." />
+      <button class="btn btn-primary" id="connectBtn" onclick="connectAPI()">接続する</button>
+    </div>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#888;cursor:pointer">
+        <input type="checkbox" id="saveTokenCheck" style="accent-color:#0082fb" checked />
+        このブラウザにトークンを保存する（次回から自動接続）
+      </label>
+    </div>`;
+  document.getElementById('setupPanel').style.display = 'block';
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+function clearSavedToken() {
+  localStorage.removeItem(TOKEN_KEY);
+  accessToken = '';
+  accountId = '';
+  location.reload();
+}
+let campaignData = [];
+let allCampaignList = []; // 全期間・全ステータスのキャンペーン一覧（比較用）
+let statusFilter = 'all';
+let revenueChart = null;
+let purchasesChart = null;
+let dailyRevenueChart = null;
+let dailyPurchasesChart = null;
+let dailyClicksChart = null;
+let allDailyRows = [];
+let campaignDailyMap = {}; // campaign_id -> [{date, revenue, purchases}]
+let sortCol = 'spend';
+let sortDir = -1;
+let accountCreatedDate = '';
+
+async function connectAPI(autoToken = null) {
+  const tokenInput = document.getElementById('tokenInput');
+  const token = autoToken || (tokenInput ? tokenInput.value.trim() : '');
+  if (!token) { showError('トークンを入力してください'); return; }
+  const btn = document.getElementById('connectBtn');
+  if (btn) { btn.textContent = '接続中...'; btn.disabled = true; }
+  hideError();
+  try {
+    const meRes = await fetch(`https://graph.facebook.com/v19.0/me/adaccounts?fields=id,name,account_status&access_token=${token}`);
+    const meData = await meRes.json();
+    if (meData.error) throw new Error(meData.error.message);
+    if (!meData.data || meData.data.length === 0) throw new Error('広告アカウントが見つかりません');
+    accessToken = token;
+    accountId = meData.data[0].id;
+
+    // アカウント開設日を取得してカレンダーの選択可能範囲を設定
+    try {
+      const acctRes = await fetch(`https://graph.facebook.com/v19.0/${accountId}?fields=created_time&access_token=${token}`);
+      const acctData = await acctRes.json();
+      if (acctData.created_time) {
+        accountCreatedDate = acctData.created_time.split('T')[0];
+      }
+    } catch(e) {
+      accountCreatedDate = '2020-01-01'; // フォールバック
+    }
+    applyDateConstraints();
+
+    document.getElementById('statusBadge').textContent = '接続済み: ' + meData.data[0].name;
+    document.getElementById('statusBadge').className = 'status-badge connected';
+    document.getElementById('setupPanel').style.display = 'none';
+    document.getElementById('clearTokenBtn').style.display = 'inline-block';
+
+    // localStorageへの保存（チェックボックスがある場合のみ確認）
+    const saveCheck = document.getElementById('saveTokenCheck');
+    if (!saveCheck || saveCheck.checked) {
+      localStorage.setItem(TOKEN_KEY, token);
+    }
+    ['controls','kpiGrid','chartGrid','chartGridDaily','compareSection','tableSection','analysisSection'].forEach(id => {
+      document.getElementById(id).style.display = id === 'kpiGrid' ? 'grid' : (id === 'chartGrid' || id === 'chartGridDaily') ? 'grid' : id === 'controls' ? 'flex' : 'block';
+    });
+    // 全キャンペーン一覧（期間・ステータス不問）を取得して比較用に保持
+    try {
+      const allCampRes = await fetch(`https://graph.facebook.com/v19.0/${accountId}/campaigns?fields=id,name,status&limit=500&access_token=${token}`);
+      const allCampData = await allCampRes.json();
+      allCampaignList = (allCampData.data || []).sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    } catch(e) { allCampaignList = []; }
+
+    await loadData();
+  } catch (e) {
+    showError('接続エラー: ' + e.message);
+    if (btn) { btn.textContent = '接続する'; btn.disabled = false; }
+  }
+}
+
+function applyDateConstraints() {
+  const today = formatDate(0);
+  const sinceEl = document.getElementById('customSince');
+  const untilEl = document.getElementById('customUntil');
+  if (accountCreatedDate) {
+    sinceEl.min = accountCreatedDate;
+    untilEl.min = accountCreatedDate;
+  }
+  sinceEl.max = today;
+  untilEl.max = today;
+
+  const hint = document.getElementById('customDateHint');
+  if (hint && accountCreatedDate) {
+    hint.textContent = `選択可能: ${accountCreatedDate} 〜 ${today}`;
+  }
+}
+
+function onCustomDateChange() {
+  const since = document.getElementById('customSince').value;
+  const until = document.getElementById('customUntil').value;
+  const hint = document.getElementById('customDateHint');
+  if (since && until) {
+    if (since > until) {
+      hint.textContent = '⚠ 開始日は終了日より前にしてください';
+      hint.style.color = '#f87171';
+      document.getElementById('applyCustomBtn').disabled = true;
+    } else {
+      // 日数計算
+      const diffDays = Math.round((new Date(until) - new Date(since)) / 86400000) + 1;
+      hint.textContent = `${diffDays}日間`;
+      hint.style.color = '#888';
+      document.getElementById('applyCustomBtn').disabled = false;
+    }
+  }
+  // until の min を since に合わせる
+  if (since) document.getElementById('customUntil').min = since;
+}
+
+function onDateRangeChange() {
+  const val = document.getElementById('dateRange').value;
+  const wrap = document.getElementById('customDateWrap');
+  if (val === 'custom') {
+    wrap.style.display = 'flex';
+    applyDateConstraints();
+    // デフォルト：過去30日〜今日をセット
+    if (!document.getElementById('customSince').value) {
+      const defSince = accountCreatedDate && formatDate(30) < accountCreatedDate ? accountCreatedDate : formatDate(30);
+      document.getElementById('customSince').value = defSince;
+      document.getElementById('customUntil').value = formatDate(0);
+      onCustomDateChange();
+    }
+  } else {
+    wrap.style.display = 'none';
+    loadData();
+  }
+}
+
+async function loadData() {
+  if (!accessToken) return;
+  const val = document.getElementById('dateRange').value;
+  let since, until;
+  if (val === 'today') {
+    since = formatDate(0); until = formatDate(0);
+  } else if (val === 'yesterday') {
+    since = formatDate(1); until = formatDate(1);
+  } else if (val === 'custom') {
+    since = document.getElementById('customSince').value;
+    until = document.getElementById('customUntil').value;
+    if (!since || !until) { showError('開始日と終了日を設定してください'); return; }
+    if (since > until) { showError('開始日は終了日より前に設定してください'); return; }
+  } else {
+    const days = parseInt(val);
+    since = formatDate(days); until = formatDate(0);
+  }
+  document.getElementById('tableContent').innerHTML = '<div class="loading"><div class="spinner"></div><br>データを取得中...</div>';
+  try {
+    const fields = 'campaign_name,campaign_id,spend,purchase_roas,actions,clicks,impressions,ctr,cpc,action_values';
+    const url = `https://graph.facebook.com/v19.0/${accountId}/insights?fields=${fields}&time_range={"since":"${since}","until":"${until}"}&level=campaign&limit=100&access_token=${accessToken}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const campRes = await fetch(`https://graph.facebook.com/v19.0/${accountId}/campaigns?fields=id,status&limit=200&access_token=${accessToken}`);
+    const campData = await campRes.json();
+    const statusMap = {};
+    if (campData.data) campData.data.forEach(c => { statusMap[c.id] = c.status; });
+
+    campaignData = (data.data || []).map(c => ({
+      ...c,
+      status: statusMap[c.campaign_id] || 'UNKNOWN'
+    }));
+
+    // ① アカウント全体・日別データ取得
+    const dailyUrl = `https://graph.facebook.com/v19.0/${accountId}/insights?fields=spend,action_values,actions,clicks&time_range={"since":"${since}","until":"${until}"}&time_increment=1&limit=200&access_token=${accessToken}`;
+    const dailyRes = await fetch(dailyUrl);
+    const dailyData = await dailyRes.json();
+    allDailyRows = dailyData.data || [];
+
+    // ② キャンペーン別・日別データ取得（絞り込みグラフ用）
+    const campDailyUrl = `https://graph.facebook.com/v19.0/${accountId}/insights?fields=campaign_id,campaign_name,action_values,actions,clicks&time_range={"since":"${since}","until":"${until}"}&level=campaign&time_increment=1&limit=500&access_token=${accessToken}`;
+    const campDailyRes = await fetch(campDailyUrl);
+    const campDailyData = await campDailyRes.json();
+
+    // campaign_id をキーに日別データをマップ化
+    campaignDailyMap = {};
+    for (const row of (campDailyData.data || [])) {
+      const cid = row.campaign_id;
+      if (!campaignDailyMap[cid]) campaignDailyMap[cid] = [];
+      const av = (row.action_values || []).find(x => x.action_type === 'purchase');
+      const act = (row.actions || []).find(x => x.action_type === 'purchase');
+      campaignDailyMap[cid].push({
+        date: row.date_start,
+        revenue: Math.round(parseFloat(av?.value || 0)),
+        purchases: parseInt(act?.value || 0),
+        clicks: parseInt(row.clicks || 0)
+      });
+    }
+
+    applyFilters();
+    document.getElementById('tableUpdated').textContent = '更新: ' + new Date().toLocaleTimeString('ja-JP');
+    document.getElementById('analysisContent').textContent = '「分析を実行」を押すと、キャンペーンデータをもとにAIが改善提案を生成します。';
+  } catch (e) {
+    showError('データ取得エラー: ' + e.message);
+    document.getElementById('tableContent').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">${e.message}</div></div>`;
+  }
+}
+
+function setStatusFilter(val) {
+  statusFilter = val;
+  document.getElementById('sf-all').className = 'status-filter-btn' + (val === 'all' ? ' active-all' : '');
+  document.getElementById('sf-on').className  = 'status-filter-btn' + (val === 'ACTIVE' ? ' active-on' : '');
+  document.getElementById('sf-off').className = 'status-filter-btn' + (val === 'PAUSED' ? ' active-off' : '');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  let filtered = campaignData.filter(c => {
+    const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+    const matchSearch = !q || c.campaign_name.toLowerCase().includes(q);
+    return matchStatus && matchSearch;
+  });
+  document.getElementById('filterCount').textContent = `${filtered.length} / ${campaignData.length} 件`;
+  renderKPIs(filtered);
+  renderCharts(filtered);
+  renderTable(filtered);
+
+  // 絞り込みがある場合はキャンペーンデータから日別を集計、ない場合は全体APIデータを使用
+  const isFiltered = filtered.length < campaignData.length;
+  if (isFiltered) {
+    renderDailyChartsFromCampaigns(filtered);
+  } else {
+    renderDailyCharts(allDailyRows);
+  }
+}
+
+function renderKPIs(data) {
+  const totalSpend = data.reduce((s, c) => s + parseFloat(c.spend || 0), 0);
+  const totalClicks = data.reduce((s, c) => s + parseInt(c.clicks || 0), 0);
+  const totalImpressions = data.reduce((s, c) => s + parseInt(c.impressions || 0), 0);
+  const totalPurchases = data.reduce((s, c) => {
+    const act = (c.actions || []).find(a => a.action_type === 'purchase');
+    return s + (act ? parseInt(act.value) : 0);
+  }, 0);
+  const totalPurchaseValue = data.reduce((s, c) => {
+    const av = (c.action_values || []).find(a => a.action_type === 'purchase');
+    return s + (av ? parseFloat(av.value) : 0);
+  }, 0);
+  const avgRoas = totalSpend > 0 ? totalPurchaseValue / totalSpend : 0;
+  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions * 100) : 0;
+  const avgCpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+
+  document.getElementById('kpiSpend').textContent = '¥' + Math.round(totalSpend).toLocaleString();
+  document.getElementById('kpiPurchases').textContent = totalPurchases.toLocaleString() + '件';
+  document.getElementById('kpiRoas').textContent = avgRoas.toFixed(2);
+  document.getElementById('kpiRoas').className = 'kpi-value ' + (avgRoas >= 3 ? 'kpi-good' : avgRoas >= 1.5 ? '' : 'kpi-bad');
+  document.getElementById('kpiClicks').textContent = totalClicks.toLocaleString();
+  document.getElementById('kpiCtr').textContent = avgCtr.toFixed(2) + '%';
+  document.getElementById('kpiCpc').textContent = '¥' + Math.round(avgCpc).toLocaleString();
+  document.getElementById('kpiSpendSub').textContent = data.length + 'キャンペーン合計';
+  document.getElementById('kpiPurchasesSub').textContent = data.length + 'キャンペーン';
+  document.getElementById('kpiSales').textContent = '¥' + Math.round(totalPurchaseValue).toLocaleString();
+  document.getElementById('kpiSalesSub').textContent = avgRoas >= 3 ? '✓ ROAS良好' : '広告費の' + avgRoas.toFixed(1) + '倍';
+  document.getElementById('kpiRoasSub').textContent = avgRoas >= 3 ? '✓ 良好' : avgRoas >= 1.5 ? '要改善' : '⚠ 低い';
+  document.getElementById('kpiClicksSub').textContent = totalImpressions.toLocaleString() + ' imp';
+  document.getElementById('kpiCtrSub').textContent = avgCtr >= 2 ? '✓ 良好' : '要改善';
+  document.getElementById('kpiCpcSub').textContent = '平均クリック単価';
+}
+
+function shortName(name) {
+  return name.length > 18 ? name.slice(0, 17) + '…' : name;
+}
+
+function renderCharts(data) {
+  const sorted = [...data].sort((a, b) => {
+    const av = (a.action_values || []).find(x => x.action_type === 'purchase');
+    const bv = (b.action_values || []).find(x => x.action_type === 'purchase');
+    return parseFloat(bv?.value || 0) - parseFloat(av?.value || 0);
+  }).slice(0, 10);
+
+  const labels = sorted.map(c => shortName(c.campaign_name));
+  const revenues = sorted.map(c => {
+    const av = (c.action_values || []).find(x => x.action_type === 'purchase');
+    return Math.round(parseFloat(av?.value || 0));
+  });
+  const purchases = sorted.map(c => {
+    const act = (c.actions || []).find(x => x.action_type === 'purchase');
+    return parseInt(act?.value || 0);
+  });
+
+  const chartDefaults = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: {} } },
+    scales: {
+      x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } },
+      y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } }
+    }
+  };
+
+  if (revenueChart) revenueChart.destroy();
+  revenueChart = new Chart(document.getElementById('revenueChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: revenues,
+        backgroundColor: 'rgba(0,130,251,0.7)',
+        borderColor: '#0082fb',
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      plugins: {
+        ...chartDefaults.plugins,
+        tooltip: { callbacks: { label: ctx => '¥' + ctx.parsed.y.toLocaleString() } }
+      }
+    }
+  });
+
+  // 購入件数TOP10は件数順でソート
+  const sortedByPurchases = [...data].sort((a, b) => {
+    const ap = (a.actions || []).find(x => x.action_type === 'purchase');
+    const bp = (b.actions || []).find(x => x.action_type === 'purchase');
+    return parseInt(bp?.value || 0) - parseInt(ap?.value || 0);
+  }).slice(0, 10);
+  const purchaseLabels = sortedByPurchases.map(c => shortName(c.campaign_name));
+  const purchaseValues = sortedByPurchases.map(c => {
+    const act = (c.actions || []).find(x => x.action_type === 'purchase');
+    return parseInt(act?.value || 0);
+  });
+
+  if (purchasesChart) purchasesChart.destroy();
+  purchasesChart = new Chart(document.getElementById('purchasesChart'), {
+    type: 'bar',
+    data: {
+      labels: purchaseLabels,
+      datasets: [{
+        data: purchaseValues,
+        backgroundColor: 'rgba(52,208,88,0.7)',
+        borderColor: '#34d058',
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      plugins: {
+        ...chartDefaults.plugins,
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y + '件' } }
+      }
+    }
+  });
+}
+
+function renderDailyChartsFromCampaigns(filteredCampaigns) {
+  // campaignDailyMap から絞り込みキャンペーンの日別データを集計
+  const filteredIds = filteredCampaigns.map(c => c.campaign_id);
+
+  // 日付ごとに売上・購入件数を合算
+  const dateMap = {};
+  for (const cid of filteredIds) {
+    const rows = campaignDailyMap[cid] || [];
+    for (const row of rows) {
+      if (!dateMap[row.date]) dateMap[row.date] = { revenue: 0, purchases: 0, clicks: 0 };
+      dateMap[row.date].revenue += row.revenue;
+      dateMap[row.date].purchases += row.purchases;
+      dateMap[row.date].clicks += (row.clicks || 0);
+    }
+  }
+
+  const dates = Object.keys(dateMap).sort();
+
+  // タイトル更新
+  const t1 = document.querySelector('#chartGridDaily .chart-card:nth-child(1) .chart-title');
+  const t2 = document.querySelector('#chartGridDaily .chart-card:nth-child(2) .chart-title');
+  const t3 = document.querySelector('#chartGridDaily .chart-card:nth-child(3) .chart-title');
+  const label = filteredCampaigns.length === 1
+    ? filteredCampaigns[0].campaign_name.slice(0, 20)
+    : `${filteredCampaigns.length}キャンペーン合計`;
+  if (t1) t1.textContent = `売上金額 推移（日別）- ${label}`;
+  if (t2) t2.textContent = `購入件数 推移（日別）- ${label}`;
+  if (t3) t3.textContent = `クリック数 推移（日別）- ${label}`;
+
+  // データがない場合
+  if (dates.length === 0) {
+    if (dailyRevenueChart) { dailyRevenueChart.destroy(); dailyRevenueChart = null; }
+    if (dailyPurchasesChart) { dailyPurchasesChart.destroy(); dailyPurchasesChart = null; }
+    return;
+  }
+
+  const labels = dates.map(d => d.slice(5));
+  const revenues = dates.map(d => dateMap[d].revenue);
+  const purchases = dates.map(d => dateMap[d].purchases);
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } },
+      y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } }
+    },
+    elements: { point: { radius: 3, hoverRadius: 5 } }
+  };
+
+  if (dailyRevenueChart) dailyRevenueChart.destroy();
+  dailyRevenueChart = new Chart(document.getElementById('dailyRevenueChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ data: revenues, borderColor: '#0082fb', backgroundColor: 'rgba(0,130,251,0.1)', borderWidth: 2, fill: true, tension: 0.3 }]
+    },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => '¥' + ctx.parsed.y.toLocaleString() } } } }
+  });
+
+  if (dailyPurchasesChart) dailyPurchasesChart.destroy();
+  dailyPurchasesChart = new Chart(document.getElementById('dailyPurchasesChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ data: purchases, borderColor: '#34d058', backgroundColor: 'rgba(52,208,88,0.1)', borderWidth: 2, fill: true, tension: 0.3 }]
+    },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.parsed.y + '件' } } } }
+  });
+
+  const clicks_f = dates.map(d => dateMap[d].clicks || 0);
+  if (dailyClicksChart) dailyClicksChart.destroy();
+  dailyClicksChart = new Chart(document.getElementById('dailyClicksChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ data: clicks_f, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', borderWidth: 2, fill: true, tension: 0.3 }]
+    },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' clicks' } } } }
+  });
+}
+
+function renderDailyCharts(rows) {
+  // タイトルをデフォルトに戻す
+  const titleEl1 = document.querySelector('#chartGridDaily .chart-card:nth-child(1) .chart-title');
+  const titleEl2 = document.querySelector('#chartGridDaily .chart-card:nth-child(2) .chart-title');
+  const titleEl3 = document.querySelector('#chartGridDaily .chart-card:nth-child(3) .chart-title');
+  if (titleEl1) titleEl1.textContent = '売上金額 推移（日別）';
+  if (titleEl2) titleEl2.textContent = '購入件数 推移（日別）';
+  if (titleEl3) titleEl3.textContent = 'クリック数 推移（日別）';
+
+  if (!rows || rows.length === 0) return;
+  const sorted = [...rows].sort((a, b) => a.date_start.localeCompare(b.date_start));
+  const labels = sorted.map(r => r.date_start.slice(5)); // MM-DD形式
+  const revenues = sorted.map(r => {
+    const av = (r.action_values || []).find(x => x.action_type === 'purchase');
+    return Math.round(parseFloat(av?.value || 0));
+  });
+  const purchases = sorted.map(r => {
+    const act = (r.actions || []).find(x => x.action_type === 'purchase');
+    return parseInt(act?.value || 0);
+  });
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } },
+      y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } }
+    },
+    elements: { point: { radius: 3, hoverRadius: 5 } }
+  };
+
+  if (dailyRevenueChart) dailyRevenueChart.destroy();
+  dailyRevenueChart = new Chart(document.getElementById('dailyRevenueChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: revenues,
+        borderColor: '#0082fb',
+        backgroundColor: 'rgba(0,130,251,0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      ...baseOpts,
+      plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => '¥' + ctx.parsed.y.toLocaleString() } } }
+    }
+  });
+
+  if (dailyPurchasesChart) dailyPurchasesChart.destroy();
+  dailyPurchasesChart = new Chart(document.getElementById('dailyPurchasesChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: purchases,
+        borderColor: '#34d058',
+        backgroundColor: 'rgba(52,208,88,0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      ...baseOpts,
+      plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.parsed.y + '件' } } }
+    }
+  });
+
+  const clicks_all = sorted.map(r => parseInt(r.clicks || 0));
+  if (dailyClicksChart) dailyClicksChart.destroy();
+  dailyClicksChart = new Chart(document.getElementById('dailyClicksChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: clicks_all,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      ...baseOpts,
+      plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' clicks' } } }
+    }
+  });
+}
+
+const colKeys = ['campaign_name','status','spend','purchases','purchaseValue','roas','clicks','ctr','cpc','impressions'];
+
+function renderTable(data) {
+  if (data.length === 0) {
+    document.getElementById('tableContent').innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">該当するキャンペーンがありません</div></div>';
+    return;
+  }
+  const sorted = [...data].sort((a, b) => {
+    const av = getColVal(a, sortCol), bv = getColVal(b, sortCol);
+    return typeof av === 'string' ? av.localeCompare(bv) * sortDir : (bv - av) * -sortDir * -1;
+  });
+
+  const headers = [
+    ['campaign_name','キャンペーン名'],['status','ステータス'],['spend','消化金額'],
+    ['purchases','購入件数'],['purchaseValue','売上'],['roas','ROAS'],
+    ['clicks','クリック'],['ctr','CTR'],['cpc','CPC'],['impressions','インプレッション']
+  ];
+
+  let html = `<table><thead><tr>`;
+  headers.forEach(([key, label]) => {
+    const arrow = sortCol === key ? (sortDir === -1 ? '▼' : '▲') : '⇅';
+    const ac = sortCol === key ? ' sort-arrow active' : ' sort-arrow';
+    html += `<th onclick="sortBy('${key}')">${label}<span class="${ac}">${arrow}</span></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  for (const c of sorted) {
+    const spend = parseFloat(c.spend || 0);
+    const clicks = parseInt(c.clicks || 0);
+    const impressions = parseInt(c.impressions || 0);
+    const ctr = parseFloat(c.ctr || 0);
+    const cpc = parseFloat(c.cpc || 0);
+    const purchases = (c.actions || []).find(a => a.action_type === 'purchase');
+    const purchaseValue = (c.action_values || []).find(a => a.action_type === 'purchase');
+    const roas = c.purchase_roas ? parseFloat(c.purchase_roas[0]?.value || 0) : 0;
+    const roasClass = roas >= 3 ? 'roas-high' : roas >= 1.5 ? 'roas-mid' : 'roas-low';
+    const isActive = c.status === 'ACTIVE';
+
+    html += `<tr>
+      <td class="campaign-name" title="${c.campaign_name}">${c.campaign_name}</td>
+      <td><span class="status-dot ${isActive ? 'active' : 'paused'}"></span>${isActive ? 'アクティブ' : '停止中'}</td>
+      <td>¥${Math.round(spend).toLocaleString()}</td>
+      <td>${purchases ? parseInt(purchases.value).toLocaleString() : '0'}件</td>
+      <td>¥${purchaseValue ? Math.round(parseFloat(purchaseValue.value)).toLocaleString() : '0'}</td>
+      <td class="${roasClass}">${roas.toFixed(2)}</td>
+      <td>${clicks.toLocaleString()}</td>
+      <td>${ctr.toFixed(2)}%</td>
+      <td>¥${Math.round(cpc).toLocaleString()}</td>
+      <td>${impressions.toLocaleString()}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('tableContent').innerHTML = html;
+}
+
+function getColVal(c, col) {
+  if (col === 'campaign_name') return c.campaign_name || '';
+  if (col === 'status') return c.status || '';
+  if (col === 'spend') return parseFloat(c.spend || 0);
+  if (col === 'purchases') { const a = (c.actions||[]).find(x=>x.action_type==='purchase'); return a ? parseInt(a.value) : 0; }
+  if (col === 'purchaseValue') { const a = (c.action_values||[]).find(x=>x.action_type==='purchase'); return a ? parseFloat(a.value) : 0; }
+  if (col === 'roas') return c.purchase_roas ? parseFloat(c.purchase_roas[0]?.value||0) : 0;
+  if (col === 'clicks') return parseInt(c.clicks||0);
+  if (col === 'ctr') return parseFloat(c.ctr||0);
+  if (col === 'cpc') return parseFloat(c.cpc||0);
+  if (col === 'impressions') return parseInt(c.impressions||0);
+  return 0;
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  applyFilters();
+}
+
+async function runAnalysis() {
+  if (campaignData.length === 0) { showError('先にデータを取得してください'); return; }
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true; btn.textContent = '分析中...';
+  document.getElementById('analysisContent').textContent = 'AIがデータを分析しています...';
+
+  const summary = campaignData.map(c => {
+    const spend = parseFloat(c.spend || 0);
+    const purchases = (c.actions || []).find(a => a.action_type === 'purchase');
+    const purchaseValue = (c.action_values || []).find(a => a.action_type === 'purchase');
+    const roas = c.purchase_roas ? parseFloat(c.purchase_roas[0]?.value || 0) : 0;
+    return {
+      name: c.campaign_name, status: c.status,
+      spend: Math.round(spend),
+      purchases: purchases ? parseInt(purchases.value) : 0,
+      purchaseValue: purchaseValue ? Math.round(parseFloat(purchaseValue.value)) : 0,
+      roas: roas.toFixed(2), clicks: parseInt(c.clicks || 0),
+      ctr: parseFloat(c.ctr || 0).toFixed(2) + '%',
+      cpc: Math.round(parseFloat(c.cpc || 0))
+    };
+  });
+
+  const val = document.getElementById('dateRange').value;
+  const days = val === 'today' ? '1' : val === 'yesterday' ? '1(昨日)' : val === 'custom' ? 'カスタム期間' : val;
+  const prompt = `以下はMeta広告の過去${days}日間のキャンペーン別実績データです。\n\n${JSON.stringify(summary, null, 2)}\n\nこのデータを分析して、以下の観点で日本語で回答してください：\n1. 全体パフォーマンスの評価（ROAS・CTR・CPCの水準）\n2. 上位パフォーマンスキャンペーンの特徴\n3. 改善が必要なキャンペーンと具体的な施策\n4. 予算配分の最適化提案\n5. 今後1週間の優先アクション\n\n箇条書きや見出しを使って分かりやすくまとめてください。`;
+
+  if (typeof sendPrompt === 'function') {
+    sendPrompt(prompt);
+    document.getElementById('analysisContent').textContent = '↑ チャットにデータを送りました。上のClaudeの返答をご確認ください。';
+  } else {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      document.getElementById('analysisContent').textContent = '✓ 分析用プロンプトをクリップボードにコピーしました。Claudeのチャットに貼り付けてください。';
+    } catch(e) {
+      document.getElementById('analysisContent').textContent = '以下をClaudeに貼り付けて分析してください：\n\n' + prompt;
+    }
+  }
+  btn.disabled = false; btn.textContent = '再分析';
+}
+
+function exportCSV() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  let filtered = campaignData.filter(c => {
+    const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+    const matchSearch = !q || c.campaign_name.toLowerCase().includes(q);
+    return matchStatus && matchSearch;
+  });
+  if (filtered.length === 0) return;
+  const headers = ['キャンペーン名','ステータス','消化金額','購入件数','売上','ROAS','クリック','CTR','CPC','インプレッション'];
+  const rows = filtered.map(c => {
+    const spend = parseFloat(c.spend || 0);
+    const purchases = (c.actions || []).find(a => a.action_type === 'purchase');
+    const purchaseValue = (c.action_values || []).find(a => a.action_type === 'purchase');
+    const roas = c.purchase_roas ? parseFloat(c.purchase_roas[0]?.value || 0) : 0;
+    return [
+      c.campaign_name, c.status, Math.round(spend),
+      purchases ? parseInt(purchases.value) : 0,
+      purchaseValue ? Math.round(parseFloat(purchaseValue.value)) : 0,
+      roas.toFixed(2), c.clicks || 0,
+      parseFloat(c.ctr || 0).toFixed(2) + '%',
+      Math.round(parseFloat(c.cpc || 0)), c.impressions || 0
+    ];
+  });
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `meta_ads_${formatDate(0)}.csv`; a.click();
+}
+
+// ============ キャンペーン比較機能 ============
+const COMPARE_COLORS = ['#0082fb','#34d058','#f59e0b','#f87171','#a78bfa','#38bdf8','#fb923c','#4ade80'];
+let compareRowCount = 0;
+let cmpSpendChart = null, cmpRevenueChart = null, cmpPurchasesChart = null, cmpClicksChart = null, cmpImpChart = null;
+
+function buildCampOptions(searchVal = '') {
+  const list = allCampaignList.length > 0 ? allCampaignList : campaignData.map(c => ({ id: c.campaign_id, name: c.campaign_name, status: c.status }));
+  const q = searchVal.toLowerCase();
+  return list
+    .filter(c => !q || (c.name || c.campaign_name || '').toLowerCase().includes(q))
+    .map(c => {
+      const id = c.id || c.campaign_id;
+      const name = c.name || c.campaign_name;
+      const status = c.status === 'ACTIVE' ? '' : ' [停止]';
+      return `<option value="${id}">${name}${status}</option>`;
+    }).join('');
+}
+
+function filterCampOptions(idx) {
+  const q = document.getElementById(`cmpSearch_${idx}`)?.value || '';
+  const sel = document.getElementById(`cmpCamp_${idx}`);
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = `<option value="">キャンペーンを選択...</option>${buildCampOptions(q)}`;
+  if (current) sel.value = current;
+}
+
+function addCompareRow() {
+  const idx = compareRowCount++;
+  const color = COMPARE_COLORS[idx % COMPARE_COLORS.length];
+  const today = formatDate(0);
+  const since30 = formatDate(30);
+
+  const row = document.createElement('div');
+  row.className = 'compare-row';
+  row.dataset.idx = idx;
+  row.style.flexDirection = 'column';
+  row.style.alignItems = 'stretch';
+  row.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="compare-color-dot" style="background:${color}"></div>
+      <input type="text" class="search-input" id="cmpSearch_${idx}" placeholder="キャンペーン名で検索..." oninput="filterCampOptions(${idx})" style="flex:1;min-width:160px;font-size:12px;padding:7px 10px" />
+      <button class="btn-remove-row" onclick="removeCompareRow(${idx})" title="削除">✕</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <select class="compare-select" id="cmpCamp_${idx}" style="flex:2;min-width:200px">
+        <option value="">キャンペーンを選択...</option>
+        ${buildCampOptions()}
+      </select>
+      <input type="date" class="compare-date" id="cmpSince_${idx}" value="${since30}" max="${today}" />
+      <span class="compare-sep">〜</span>
+      <input type="date" class="compare-date" id="cmpUntil_${idx}" value="${today}" max="${today}" />
+    </div>
+  `;
+  document.getElementById('compareRows').appendChild(row);
+}
+
+function removeCompareRow(idx) {
+  const row = document.querySelector(`.compare-row[data-idx="${idx}"]`);
+  if (row) row.remove();
+}
+
+async function runCompare() {
+  const rows = document.querySelectorAll('.compare-row');
+  if (rows.length < 2) { showError('2つ以上のキャンペーンを追加してください'); return; }
+
+  const targets = [];
+  for (const row of rows) {
+    const idx = row.dataset.idx;
+    const campId = document.getElementById(`cmpCamp_${idx}`)?.value;
+    const since = document.getElementById(`cmpSince_${idx}`)?.value;
+    const until = document.getElementById(`cmpUntil_${idx}`)?.value;
+    const camp = campaignData.find(c => c.campaign_id === campId);
+    if (!campId || !since || !until) { showError('すべてのキャンペーンと期間を設定してください'); return; }
+    if (since > until) { showError('開始日は終了日より前に設定してください'); return; }
+    targets.push({ campId, campName: camp?.campaign_name || campId, since, until, color: COMPARE_COLORS[parseInt(idx) % COMPARE_COLORS.length] });
+  }
+
+  // 各キャンペーンの日別データを取得
+  const allSeries = [];
+  for (const t of targets) {
+    const url = `https://graph.facebook.com/v19.0/${t.campId}/insights?fields=action_values,actions,clicks,spend,impressions&time_range={"since":"${t.since}","until":"${t.until}"}&time_increment=1&limit=200&access_token=${accessToken}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) { showError('データ取得エラー: ' + data.error.message); return; }
+    const rows = (data.data || []).sort((a, b) => a.date_start.localeCompare(b.date_start));
+    allSeries.push({
+      ...t,
+      dates: rows.map(r => r.date_start.slice(5)),
+      revenues: rows.map(r => { const av = (r.action_values||[]).find(x=>x.action_type==='purchase'); return Math.round(parseFloat(av?.value||0)); }),
+      purchases: rows.map(r => { const ac = (r.actions||[]).find(x=>x.action_type==='purchase'); return parseInt(ac?.value||0); }),
+      clicks: rows.map(r => parseInt(r.clicks||0)),
+      spends: rows.map(r => Math.round(parseFloat(r.spend||0))),
+      impressions: rows.map(r => parseInt(r.impressions||0))
+    });
+  }
+
+  // 凡例を更新
+  const legend = document.getElementById('compareLegend');
+  legend.innerHTML = allSeries.map(s =>
+    `<div class="compare-legend-item"><div class="compare-legend-dot" style="background:${s.color}"></div>${s.campName}（${s.since}〜${s.until}）</div>`
+  ).join('');
+
+  document.getElementById('compareCharts').style.display = 'grid';
+
+  const baseOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } },
+      y: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#1a1f2e' } }
+    },
+    elements: { point: { radius: 2, hoverRadius: 5 } }
+  };
+
+  const makeDatasets = (key) => allSeries.map(s => ({
+    label: s.campName,
+    data: s[key],
+    labels_x: s.dates,
+    borderColor: s.color,
+    backgroundColor: s.color + '22',
+    borderWidth: 2, fill: false, tension: 0.3,
+    parsing: false
+  })).map(ds => ({
+    ...ds,
+    data: ds.labels_x.map((x, i) => ({ x, y: ds.data[i] }))
+  }));
+
+  // X軸を全期間の日付ユニオンで共通化
+  const allDates = [...new Set(allSeries.flatMap(s => s.dates))].sort();
+
+  const makeDs = (key, fmt) => allSeries.map(s => ({
+    label: s.campName,
+    data: allDates.map(d => {
+      const i = s.dates.indexOf(d);
+      return i >= 0 ? s[key][i] : null;
+    }),
+    borderColor: s.color,
+    backgroundColor: s.color + '22',
+    borderWidth: 2, fill: false, tension: 0.3,
+    spanGaps: false,
+    pointRadius: 2
+  }));
+
+  if (cmpSpendChart) cmpSpendChart.destroy();
+  cmpSpendChart = new Chart(document.getElementById('cmpSpendChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: makeDs('spends') },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ¥' + (ctx.parsed.y||0).toLocaleString() } } } }
+  });
+
+  if (cmpRevenueChart) cmpRevenueChart.destroy();
+  cmpRevenueChart = new Chart(document.getElementById('cmpRevenueChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: makeDs('revenues') },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ¥' + (ctx.parsed.y||0).toLocaleString() } } } }
+  });
+
+  if (cmpPurchasesChart) cmpPurchasesChart.destroy();
+  cmpPurchasesChart = new Chart(document.getElementById('cmpPurchasesChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: makeDs('purchases') },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y||0) + '件' } } } }
+  });
+
+  if (cmpClicksChart) cmpClicksChart.destroy();
+  cmpClicksChart = new Chart(document.getElementById('cmpClicksChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: makeDs('clicks') },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y||0).toLocaleString() } } } }
+  });
+
+  if (cmpImpChart) cmpImpChart.destroy();
+  cmpImpChart = new Chart(document.getElementById('cmpImpChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: makeDs('impressions') },
+    options: { ...baseOpts, plugins: { ...baseOpts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y||0).toLocaleString() } } } }
+  });
+
+  // ---- 数値テーブル生成 ----
+  renderCompareTable(allSeries);
+
+  // タブ表示・デフォルトはテーブル
+  document.getElementById('cmpTabRow').style.display = 'flex';
+  switchCmpTab('table');
+
+  hideError();
+}
+
+function switchCmpTab(tab) {
+  document.getElementById('tabTable').className = 'cmp-tab' + (tab === 'table' ? ' active' : '');
+  document.getElementById('tabChart').className = 'cmp-tab' + (tab === 'chart' ? ' active' : '');
+  document.getElementById('compareTable').style.display = tab === 'table' ? 'block' : 'none';
+  document.getElementById('compareCharts').style.display = tab === 'chart' ? 'grid' : 'none';
+}
+
+function renderCompareTable(allSeries) {
+  const metrics = [
+    { key: 'spends',      label: '消化金額',        fmt: v => '¥' + v.toLocaleString(),  higherIsBetter: false },
+    { key: 'revenues',    label: '売上金額',         fmt: v => '¥' + v.toLocaleString(),  higherIsBetter: true  },
+    { key: 'purchases',   label: '購入件数',         fmt: v => v.toLocaleString() + '件', higherIsBetter: true  },
+    { key: 'clicks',      label: 'クリック数',       fmt: v => v.toLocaleString(),         higherIsBetter: true  },
+    { key: 'impressions', label: 'インプレッション', fmt: v => v.toLocaleString(),         higherIsBetter: true  },
+  ];
+
+  // 各系列の合計を計算
+  const totals = allSeries.map(s => ({
+    name: s.campName,
+    color: s.color,
+    since: s.since,
+    until: s.until,
+    spends:      s.spends.reduce((a, b) => a + b, 0),
+    revenues:    s.revenues.reduce((a, b) => a + b, 0),
+    purchases:   s.purchases.reduce((a, b) => a + b, 0),
+    clicks:      s.clicks.reduce((a, b) => a + b, 0),
+    impressions: s.impressions.reduce((a, b) => a + b, 0),
+  }));
+
+  // ROAS・CTR・CPCを計算して追加
+  totals.forEach(t => {
+    t.roas = t.spends > 0 ? (t.revenues / t.spends) : 0;
+    t.ctr  = t.impressions > 0 ? (t.clicks / t.impressions * 100) : 0;
+    t.cpc  = t.clicks > 0 ? (t.spends / t.clicks) : 0;
+    t.cpa  = t.purchases > 0 ? (t.spends / t.purchases) : 0;
+  });
+
+  const allMetrics = [
+    ...metrics,
+    { key: 'roas', label: 'ROAS',    fmt: v => v.toFixed(2),             higherIsBetter: true  },
+    { key: 'ctr',  label: 'CTR',     fmt: v => v.toFixed(2) + '%',       higherIsBetter: true  },
+    { key: 'cpc',  label: 'CPC',     fmt: v => '¥' + Math.round(v).toLocaleString(), higherIsBetter: false },
+    { key: 'cpa',  label: 'CPA',     fmt: v => '¥' + Math.round(v).toLocaleString(), higherIsBetter: false },
+  ];
+
+  // テーブルHTML生成
+  let html = `<table class="cmp-table"><thead><tr>
+    <th style="min-width:180px">指標</th>
+    ${totals.map(t => `<th>
+      <div class="cmp-camp-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${t.color};flex-shrink:0"></span>${t.name}</div>
+      <div class="cmp-period">${t.since} 〜 ${t.until}</div>
+    </th>`).join('')}
+  </tr></thead><tbody>`;
+
+  for (const m of allMetrics) {
+    const vals = totals.map(t => t[m.key]);
+    const best = m.higherIsBetter ? Math.max(...vals) : Math.min(...vals);
+    const worst = m.higherIsBetter ? Math.min(...vals) : Math.max(...vals);
+    html += `<tr>
+      <td style="text-align:left;color:#aaa;font-weight:500">${m.label}</td>
+      ${vals.map((v, i) => {
+        const isBest  = vals.filter(x => x === best).length < vals.length && v === best;
+        const isWorst = vals.filter(x => x === worst).length < vals.length && v === worst;
+        const cls = isBest ? ' class="cmp-best"' : isWorst ? ' class="cmp-worst"' : '';
+        return `<td${cls}>${m.fmt(v)}${isBest ? ' ▲' : isWorst ? ' ▼' : ''}</td>`;
+      }).join('')}
+    </tr>`;
+  }
+
+  html += '</tbody></table>';
+  document.getElementById('cmpTableContent').innerHTML = html;
+}
+// ============ 比較機能ここまで ============
+
+function formatDate(daysAgo) {
+  const d = new Date(); d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+}
+function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
+function hideError() { document.getElementById('errorMsg').style.display = 'none'; }
+</script>
+</body>
+</html>
