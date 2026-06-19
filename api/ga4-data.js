@@ -1,4 +1,4 @@
-const { BetaAnalyticsDataClient } = require('@google-analytics/data');
+import { BetaAnalyticsDataClient } from '@google-analytics/data';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
