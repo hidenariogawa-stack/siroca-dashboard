@@ -51,7 +51,7 @@ exports.handler = async (event) => {
     if (type === 'overview') {
       const [response] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
-        dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
         metrics: [
           { name: 'sessions' },
           { name: 'totalUsers' },
@@ -68,7 +68,7 @@ exports.handler = async (event) => {
     if (type === 'funnel') {
       const [response] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
-        dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
         metrics: [
           { name: 'sessions' },
           { name: 'addToCarts' },
@@ -85,7 +85,7 @@ exports.handler = async (event) => {
     if (type === 'events') {
       const [response] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
-        dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
         metrics: [{ name: 'eventCount' }, { name: 'sessions' }],
         dimensions: [{ name: 'eventName' }],
         dimensionFilter: {
@@ -121,7 +121,7 @@ exports.handler = async (event) => {
     if (type === 'landing_pages') {
       const [response] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
-        dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
         metrics: [
           { name: 'sessions' },
           { name: 'addToCarts' },
@@ -144,7 +144,7 @@ exports.handler = async (event) => {
     if (type === 'sources') {
       const [response] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
-        dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+        dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
         metrics: [
           { name: 'sessions' },
           { name: 'addToCarts' },
