@@ -213,23 +213,23 @@ exports.handler = async (event) => {
         ...(dimensionFilter && { dimensionFilter }),
       });
 
-      // 遷移したユニークセッション数（sessionsメトリクスで1セッション1カウント）
+      // 遷移したユニークユーザー数（activeUsersで1ユーザー1カウント）
       const [transitionRes] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
         dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
-        metrics: [{ name: 'sessions' }],
+        metrics: [{ name: 'activeUsers' }],
         dimensions: [{ name: 'date' }],
         dimensionFilter: combinedFilter,
       });
 
-      // LP別遷移セッション数
+      // LP別遷移ユーザー数
       const [lpTransitionRes] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
         dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
-        metrics: [{ name: 'sessions' }],
+        metrics: [{ name: 'activeUsers' }],
         dimensions: [{ name: 'landingPage' }],
         dimensionFilter: combinedFilter,
-        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
         limit: 20,
       });
 
@@ -273,4 +273,3 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: error.message }),
     };
   }
-};
