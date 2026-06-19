@@ -85,9 +85,9 @@ exports.handler = async (event) => {
         ...(dimensionFilter && { dimensionFilter }),
       });
 
-      // purchaseイベント数（eventNameフィルター + 既存フィルターをAND結合）
+      // 直販cvイベント数（eventNameフィルター + 既存フィルターをAND結合）
       const purchaseEventFilter = {
-        filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'purchase' } }
+        filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: '直販cv' } }
       };
       const combinedFilter = dimensionFilter
         ? { andGroup: { expressions: [purchaseEventFilter, ...(dimensionFilter.andGroup?.expressions || [{ filter: dimensionFilter.filter }])] } }
