@@ -622,12 +622,29 @@
   <div style="background:#161b27;border:1px solid #1e2130;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
     <div style="font-size:12px;color:#888;font-weight:500;white-space:nowrap">🔍 フィルター：</div>
 
+    <!-- 日付範囲 -->
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="font-size:12px;color:#666;white-space:nowrap">期間</label>
+      <select id="ga4DatePreset" onchange="onGa4DatePresetChange()" style="background:#0f1117;border:1px solid #2a2f40;border-radius:6px;color:#ccc;font-size:12px;padding:6px 10px;cursor:pointer">
+        <option value="7">過去7日</option>
+        <option value="30" selected>過去30日</option>
+        <option value="90">過去90日</option>
+        <option value="custom">カスタム</option>
+      </select>
+    </div>
+    <div id="ga4CustomDate" style="display:none;align-items:center;gap:6px">
+      <input type="date" id="ga4DateFrom" style="background:#0f1117;border:1px solid #2a2f40;border-radius:6px;color:#ccc;font-size:12px;padding:5px 8px">
+      <span style="color:#555;font-size:12px">〜</span>
+      <input type="date" id="ga4DateTo" style="background:#0f1117;border:1px solid #2a2f40;border-radius:6px;color:#ccc;font-size:12px;padding:5px 8px">
+    </div>
+
     <!-- トラフィック種別 -->
     <div style="display:flex;align-items:center;gap:8px">
-      <label style="font-size:12px;color:#666">トラフィック</label>
-      <select id="ga4MediumFilter" onchange="applyGa4Filters()" style="background:#0f1117;border:1px solid #2a2f40;border-radius:6px;color:#ccc;font-size:12px;padding:6px 10px;cursor:pointer">
+      <label style="font-size:12px;color:#666">流入</label>
+      <select id="ga4MediumFilter" style="background:#0f1117;border:1px solid #2a2f40;border-radius:6px;color:#ccc;font-size:12px;padding:6px 10px;cursor:pointer">
         <option value="">すべて</option>
-        <option value="cpc">有料（CPC）</option>
+        <option value="paidsocial">有料SNS（paidsocial）</option>
+        <option value="cpc">有料検索（CPC）</option>
         <option value="organic">オーガニック</option>
         <option value="referral">参照</option>
         <option value="email">メール</option>
@@ -2740,12 +2757,35 @@ async function initGa4() {
   await Promise.all([loadGa4Overview(), loadGa4Funnel(), loadGa4Events(), loadGa4Sources(), loadGa4LandingPages()]);
 }
 
+function onGa4DatePresetChange() {
+  const preset = document.getElementById('ga4DatePreset').value;
+  const customDiv = document.getElementById('ga4CustomDate');
+  customDiv.style.display = preset === 'custom' ? 'flex' : 'none';
+  if (preset !== 'custom') {
+    const today = new Date();
+    const from = new Date(today);
+    from.setDate(from.getDate() - parseInt(preset));
+    document.getElementById('ga4DateFrom').value = from.toISOString().split('T')[0];
+    document.getElementById('ga4DateTo').value = today.toISOString().split('T')[0];
+  }
+}
+
 function getGa4Filters() {
   const medium = document.getElementById('ga4MediumFilter').value;
   const lp = ga4SelectedLp;
+  const preset = document.getElementById('ga4DatePreset').value;
   const params = new URLSearchParams();
   if (medium) params.set('medium', medium);
   if (lp) params.set('landingPage', lp);
+  if (preset === 'custom') {
+    const from = document.getElementById('ga4DateFrom').value;
+    const to = document.getElementById('ga4DateTo').value;
+    if (from) params.set('startDate', from);
+    if (to) params.set('endDate', to);
+  } else {
+    params.set('startDate', preset + 'daysAgo');
+    params.set('endDate', 'today');
+  }
   return params.toString() ? '&' + params.toString() : '';
 }
 
