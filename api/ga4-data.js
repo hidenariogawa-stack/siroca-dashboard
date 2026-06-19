@@ -9,9 +9,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const serviceAccountKey = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_KEY);
+    const privateKey = (process.env.GA4_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+    const clientEmail = process.env.GA4_CLIENT_EMAIL;
     const propertyId = process.env.GA4_PROPERTY_ID;
-    const analyticsDataClient = new BetaAnalyticsDataClient({ credentials: serviceAccountKey });
+
+    const analyticsDataClient = new BetaAnalyticsDataClient({
+      credentials: {
+        client_email: clientEmail,
+        private_key: privateKey,
+      }
+    });
 
     const params = req.query || {};
     const type = params.type || 'overview';
