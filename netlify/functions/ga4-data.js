@@ -38,7 +38,7 @@ exports.handler = async (event) => {
           filter: {
             fieldName: 'sessionMedium',
             inListFilter: {
-              values: ['cpc', 'paidsocial', 'paid', 'ppc', 'paid_social', 'paid-social', 'display', 'cpv', 'cpm']
+              values: ['cpc', 'paidsocial', 'paid']
             }
           }
         });
