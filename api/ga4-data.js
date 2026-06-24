@@ -9,17 +9,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const privateKey = (process.env.GA4_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-    const clientEmail = process.env.GA4_CLIENT_EMAIL;
+    let credentials;
+    if (process.env.GA4_SERVICE_ACCOUNT_KEY && process.env.GA4_SERVICE_ACCOUNT_KEY.startsWith('{')) {
+      credentials = JSON.parse(process.env.GA4_SERVICE_ACCOUNT_KEY);
+    } else {
+      credentials = {
+        client_email: process.env.GA4_CLIENT_EMAIL,
+        private_key: (process.env.GA4_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      };
+    }
+
+    const analyticsDataClient = new BetaAnalyticsDataClient({ credentials });
     const propertyId = process.env.GA4_PROPERTY_ID;
-
-    const analyticsDataClient = new BetaAnalyticsDataClient({
-      credentials: {
-        client_email: clientEmail,
-        private_key: privateKey,
-      }
-    });
-
     const params = req.query || {};
     const type = params.type || 'overview';
     const landingPage = params.landingPage || null;
