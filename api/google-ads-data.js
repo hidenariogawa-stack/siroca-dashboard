@@ -1,13 +1,7 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
 
   try {
-    // アクセストークン取得
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -28,23 +22,6 @@ export default async function handler(req, res) {
 
     const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
     const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-    const params = req.query || {};
-    const startDate = params.startDate || '30daysAgo';
-    const endDate = params.endDate || 'today';
-
-    // 日付変換
-    const toDateStr = (d) => {
-      if (d === '30daysAgo') {
-        const date = new Date();
-        date.setDate(date.getDate() - 30);
-        return date.toISOString().split('T')[0];
-      }
-      if (d === 'today') return new Date().toISOString().split('T')[0];
-      return d;
-    };
-
-    const start = toDateStr(startDate);
-    const end = toDateStr(endDate);
 
     const query = `
       SELECT
@@ -56,7 +33,7 @@ export default async function handler(req, res) {
         metrics.conversions,
         metrics.conversions_value
       FROM campaign
-      WHERE segments.date BETWEEN '${start}' AND '${end}'
+      WHERE segments.date BETWEEN '2026-05-01' AND '2026-06-24'
         AND campaign.status = 'ENABLED'
       ORDER BY metrics.cost_micros DESC
     `;
@@ -74,13 +51,12 @@ export default async function handler(req, res) {
       }
     );
 
-    const adsData = await adsRes.json();
-
-    if (!adsRes.ok) {
-      return res.status(500).json({ error: 'Google Ads API error', detail: adsData });
-    }
-
-    return res.status(200).json(adsData);
+    const rawText = await adsRes.text();
+    
+    return res.status(200).json({ 
+      status: adsRes.status, 
+      body: rawText.substring(0, 500) 
+    });
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
