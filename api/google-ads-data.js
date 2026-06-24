@@ -22,14 +22,59 @@ export default async function handler(req, res) {
 
     const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
     const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+    const params = req.query || {};
+    const startDate = params.startDate || '30daysAgo';
+    const endDate = params.endDate || 'today';
 
-    // デバッグ用：環境変数の確認
-    return res.status(200).json({
-      accessToken: accessToken ? 'OK' : 'MISSING',
-      customerId: customerId || 'MISSING',
-      developerToken: developerToken ? 'OK' : 'MISSING',
-      url: `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`,
-    });
+    const toDateStr = (d) => {
+      if (d === '30daysAgo') {
+        const date = new Date();
+        date.setDate(date.getDate() - 30);
+        return date.toISOString().split('T')[0];
+      }
+      if (d === 'today') return new Date().toISOString().split('T')[0];
+      return d;
+    };
+
+    const start = toDateStr(startDate);
+    const end = toDateStr(endDate);
+
+    const query = `
+      SELECT
+        campaign.name,
+        campaign.status,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value
+      FROM campaign
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND campaign.status = 'ENABLED'
+      ORDER BY metrics.cost_micros DESC
+    `;
+
+    const adsRes = await fetch(
+      `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'developer-token': developerToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      }
+    );
+
+    const rawText = await adsRes.text();
+
+    try {
+      const data = JSON.parse(rawText);
+      return res.status(200).json(data);
+    } catch {
+      return res.status(500).json({ error: 'Invalid JSON', raw: rawText.substring(0, 500) });
+    }
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
