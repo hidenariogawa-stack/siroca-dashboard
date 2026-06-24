@@ -23,39 +23,12 @@ export default async function handler(req, res) {
     const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
     const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
 
-    const query = `
-      SELECT
-        campaign.name,
-        campaign.status,
-        metrics.impressions,
-        metrics.clicks,
-        metrics.cost_micros,
-        metrics.conversions,
-        metrics.conversions_value
-      FROM campaign
-      WHERE segments.date BETWEEN '2026-05-01' AND '2026-06-24'
-        AND campaign.status = 'ENABLED'
-      ORDER BY metrics.cost_micros DESC
-    `;
-
-    const adsRes = await fetch(
-      `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'developer-token': developerToken,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query }),
-      }
-    );
-
-    const rawText = await adsRes.text();
-    
-    return res.status(200).json({ 
-      status: adsRes.status, 
-      body: rawText.substring(0, 500) 
+    // デバッグ用：環境変数の確認
+    return res.status(200).json({
+      accessToken: accessToken ? 'OK' : 'MISSING',
+      customerId: customerId || 'MISSING',
+      developerToken: developerToken ? 'OK' : 'MISSING',
+      url: `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`,
     });
 
   } catch (error) {
