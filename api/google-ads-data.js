@@ -1,0 +1,88 @@
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    // アクセストークン取得
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_ADS_CLIENT_ID,
+        client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+        refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    const accessToken = tokenData.access_token;
+
+    if (!accessToken) {
+      return res.status(500).json({ error: 'Failed to get access token', detail: tokenData });
+    }
+
+    const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
+    const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+    const params = req.query || {};
+    const startDate = params.startDate || '30daysAgo';
+    const endDate = params.endDate || 'today';
+
+    // 日付変換
+    const toDateStr = (d) => {
+      if (d === '30daysAgo') {
+        const date = new Date();
+        date.setDate(date.getDate() - 30);
+        return date.toISOString().split('T')[0];
+      }
+      if (d === 'today') return new Date().toISOString().split('T')[0];
+      return d;
+    };
+
+    const start = toDateStr(startDate);
+    const end = toDateStr(endDate);
+
+    const query = `
+      SELECT
+        campaign.name,
+        campaign.status,
+        metrics.impressions,
+        metrics.clicks,
+        metrics.cost_micros,
+        metrics.conversions,
+        metrics.conversions_value
+      FROM campaign
+      WHERE segments.date BETWEEN '${start}' AND '${end}'
+        AND campaign.status = 'ENABLED'
+      ORDER BY metrics.cost_micros DESC
+    `;
+
+    const adsRes = await fetch(
+      `https://googleads.googleapis.com/v17/customers/${customerId}/googleAds:search`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'developer-token': developerToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      }
+    );
+
+    const adsData = await adsRes.json();
+
+    if (!adsRes.ok) {
+      return res.status(500).json({ error: 'Google Ads API error', detail: adsData });
+    }
+
+    return res.status(200).json(adsData);
+
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
