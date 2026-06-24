@@ -183,7 +183,7 @@ export default async function handler(req, res) {
         property: `properties/${propertyId}`,
         dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
         metrics: [{ name: 'eventCount' }],
-        dimensions: [{ name: 'customEvent:search_term' }],
+　　　　dimensions: [{ name: 'searchTerm' }],
         dimensionFilter: combinedSearchFilter,
         orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
         limit: 20,
