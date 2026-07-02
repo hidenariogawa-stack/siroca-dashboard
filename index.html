@@ -1115,9 +1115,7 @@ ${JSON.stringify(rktData.slice(0,10), null, 2)}
       await navigator.clipboard.writeText(prompt);
       document.getElementById('rktAnalysisContent').textContent = '✓ 分析用プロンプトをクリップボードにコピーしました。Claudeに貼り付けてください。';
     } catch(e) {
-      document.getElementById('rktAnalysisContent').textContent = '以下をClaudeに貼り付けてください：
-
-' + prompt;
+      document.getElementById('rktAnalysisContent').textContent = '以下をClaudeに貼り付けてください：\n\n' + prompt;
     }
   }
 }
