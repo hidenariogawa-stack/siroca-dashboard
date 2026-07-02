@@ -179,11 +179,12 @@ export default async function handler(req, res) {
         ? { andGroup: { expressions: [searchFilter, ...(dimensionFilter.andGroup?.expressions || [{ filter: dimensionFilter.filter }])] } }
         : searchFilter;
 
+      // ★ 修正済み: customEvent:search_term → searchTerm
       const [searchRes] = await analyticsDataClient.runReport({
         property: `properties/${propertyId}`,
         dateRanges: [{ startDate: params.startDate || '30daysAgo', endDate: params.endDate || 'today' }],
         metrics: [{ name: 'eventCount' }],
-　　　　dimensions: [{ name: 'searchTerm' }],
+        dimensions: [{ name: 'searchTerm' }],
         dimensionFilter: combinedSearchFilter,
         orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }],
         limit: 20,
